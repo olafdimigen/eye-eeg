@@ -1,0 +1,1 @@
+Readme for the EYE-EEG extension for MATLAB, soon to be on GitHub
