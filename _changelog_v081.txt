@@ -1,0 +1,181 @@
+%% EYE-EEG change log
+% olaf.dimigen@hu-berlin.de
+
+% Change log for version 0.81
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%% 2017-10-18: Bug fix: Incorrect "urevent" latencies for eye movement events
+% [addevents.m] [but see also: detecteyemovements.m]
+
+% This bugfix is relevant for (power)users who use the EEG.urevent
+% structure of EEGLAB. During eye movement detection, new saccade and fixation 
+% events, added by function addevent, are also added to EEGLABs "urevent"
+% structure (EEG.urevent). EEG.urevent contains a representation of the original 
+% event history of the dataset, before segmentation into epochs.
+% This urevent info can be quite useful in some research contexts. 
+% When writing EYE-EEG we have decided that information about the (new) 
+% eye movement events should also be added to the EEG.urevent structure, 
+% because this is often quite helpful for advanced analyses. 
+% Previously however, the EEG.urevent.latency for new (eye movement) events
+% added using function addevents() was wrong, if the dataset was already cut into 
+% epochs when the detecteyemovements and addevents functions were executed.
+% The data stored in EEG.event.latency was always correct.
+% This has now been fixed.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%% 2017-00-00: Replace function smooth() in ploteventrate
+% [ploteventrate.m]
+%
+% Replaced function smooth() in ploteventrate, because it requires 
+% the commerical Curve Fitting Toolbox 
+
+
+% As of EYE-EEG version 0.80
+
+% MAJOR FEATURES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%% 2016-09-07: Support for "Tobii Pro" eye trackers
+% [pop_parsetobii.m, parsetobii.m]
+% 
+% Allows to read data recorded with "Tobii Pro" eye trackers. Please refer
+% to the EYE-EEG website for details about this new function. 
+% Thanks to Estefania Dominguez from Tobii for developing this function 
+% with us.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%% 2016-10-28: New cross-correlation method to evaluate synch. quality
+% [pop_checksynch.m]
+% added pop_checksync() function which allows to assess synchronization 
+% quality by cross-correlation of eye tracker (gaze) and electro-oculogram 
+% (EOG) channels. We propose this as a new method to evaluate the synchronization
+% of ET and EEG data based on the actual signals, rather than based only
+% on common (trigger) events
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%% 2017-01-13: Automatic import of "other" ET messages
+% [parseeyelink.m, parsesmi.m, pop_importeyetracker.m, synchronize.m]
+% Messages are ASCII-text message lines in the raw eye tracking data.
+% In the past, EYE-EEG only considered messages that contained a special
+% keyword for the purpose of synchronization.
+%
+% Now, EYE-EEG also parses and imports other eye tracking messages 
+% (for Eyelink and SMI data), because sometimes, information about the 
+% experiment (e.g. trial, condition) is only contained in 'message lines', 
+% but not in the EEG triggers. In this case, it is helpful to also import 
+% the messages into the synchronized/resampled ET/EEG dataset with their
+% new timestamp. 
+% Functions parseeyelink(), synchronize(), and pop_importeyetracker() were 
+% changed such that message information is now also imported. Messages are 
+% stored in field 'EEG.etc.othermessages' of EEGLAB's data structure 
+% together with their new latency in the synchronized dataset. 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+
+% MINOR FEATURES & BUG FIXES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 2015-03-27: Fixed problem with EEG from ANT systems
+% [addevent.m]
+% Problem: The ANT data importer does not fill the EEG.urevent structure, 
+% leading to a crash of this function. Solution: Fixed by calling
+% eeg_checkset() to re-create ur-events as follows:
+% 
+% if isempty(EEG.urevent)
+%    fprintf('\nWarning: EEG.urevent is empty. Recreating... 
+%    urevents with eeg_checkset before adding new events...\n')
+%    EEG = eeg_checkset(EEG,'makeur') % recreate ur-events
+% end
+% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 2015-03-27: Minor bug fix
+% [microsacc_plugin.m]
+% fixed function call for function 'velthresh(vel)', which was misspelled 
+% as 'velthreshold(vel)' 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 2015-09-17: User feedback
+% [synchronize.m]
+% improved clarity of wording in screen outputs about the quality of 
+% synchronization
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 2015-09-17: ET channel names
+% [pop_importeyetracker.m]
+% Underscores and empty spaces in ET channel names are now replaced with 
+% '-' (rather than underscores) because underscores affect the 
+% text-formatting in MATLAB (e.g. in function > Plot > Continuous data).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%% 2015-09-19: User feedback
+% [ploteyemovements.m]
+% Improved clarity of the wording of screen outputs
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 2017-01-13: User-defined searchRadius to identify shared events
+% [pop_importeyetracker.m, synchronize.m]
+%
+% Allow user to set 'searchRange' to identify shared events.
+% Added additional function input searchRange in pop_importeyetracker. 
+% This input affects how EYE-EEG identifies instances of 'shared' events 
+% that are present in both recordings (but possibly not at the exact same 
+% latency due to some transmission time jitter). Around each 
+% event (trigger) in the EEG, EYE-EEG will search for plusminus
+% searchRadius samples for an ET event of the same type (e.g. '123'). These
+% shared events are then entered into the linear regression to optimize the 
+% clock drift/alignment between both recordings. However, in some cases, 
+% errors may occur if multiple events of the same type (e.g. '123') were 
+% send in close succession (e.g. only 5 ms apart) during the experiment, 
+% because then multiple ET events may be in the searchRange around the EEG
+% trigger. In this case, it makes sense to decrease search range 
+% a little bit. Otherwise, stick to the default of 4 samples.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  2017-01-14: User-feedback if ET file cannot be found
+% [pop_importeyetracker.m]
+% Previously, there was no feedback/errormessage if the specified .mat file
+% for the eye tracker did not exist.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  2017-02-15: Storage of information in EEG.etc.eyetracker
+% [pop_importeyetracker.m], [pop_etica.m]
+%
+% Various useful information about the eye tracking data is now stored in
+% the field EEG.etc.eyetracker...
+% -- histogram of sync error informing about the datasets synchronization quality
+% -- the content and new EEG latency of "other" messages contained in the ET 
+%    raw data. 
+% -- saccade/fixation variance ratio of ICA-components
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  2017-02-15: Bugfix: Estimated ET sampling rate was given as "0 Hz"
+% [synchronize.m]
+%
+% Fixed bug with some ET setups. Due to the bug, the estimated ET sampling
+% rate (relative to the EEG master clock) was reported as "0 Hz" during
+% synchronization. Fixed this by adding exception for special cases in
+% which parallel port inputs were send using separate INPUT lines in the
+% raw ET data.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  2017-02-15: Bugfix: pop_importeyetracker: wrong filename feedback
+% [pop_importeyetracker]
+%
+% Fixed bug where the function did not produce an error message (just 
+% stayed silent and did nothing) if the user entered a wrong filename or a
+% non-existing filepath.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 2017-05-03 
+% [pop_eyetrackerica.m, eyetrackerica.m]
+% The pop_eyetrackerica uses the duration of saccades and fixations. 
+% Although the EEGLAB documentation is inconsistent regarding this issue,
+% event durations in EEG.event appear to be given in SAMPLES rather than 
+% microsaccades. That is why the duration of eye movements and fixations is
+% also stored as samples in EEG.event.duration. 
+%
+% However, the values in EEG.event.duration were NOT updated by older versions
+% of EEGLABs data resampling function pop_resample. This means that if user 
+% choses to resample their (synchronized) EEG data, the fixation duration and 
+% saccade duration values will be incorrect afterwards. Importantly, this
+% will also compromise the outputs of the pop_eyetrackerica function, which 
+% uses the event duration information for saccades and fixations. 
+%
+% A warning has now been added to the documentation of pop_eyetrackerica 
+% and eyetrackerica. Thanks to C. Huber-Huber for noticing this bug (in May
+% 2017) and to the EEGLAB team for agreeing to fix it in new EEGLAB versions.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 2017-07-02
+% Various smaller bug fixes
+%
+% We thank everyone who made suggestions or contributed bug reportes, for
+% example S. Oehlschlaeger, C. Huber-Huber, A. Andreev, M. Cantor, J. Leehr,
+% J. Van Driehl and many more!

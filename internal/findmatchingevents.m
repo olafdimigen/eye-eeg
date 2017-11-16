@@ -1,11 +1,11 @@
-% findmatchingevents() - find corresponding events in EEG and eye tracker.
+% findmatchingevents() - find corresponding events in EEG & eye tracker
 %
-% Go through events in the EEG, identify those events where an ET event 
+% Go through events in the EEG, identify those events where an ET event
 % of the same type (e.g., type "123") is found within a search radius of
-% "sampleradius" samples.
+% "searchRadius" samples.
 %
-% Copyright (C) 2009-2013 Olaf Dimigen & Ulrich Reinacher, HU Berlin
-% olaf.dimigen@hu-berlin.de / ulrich.reinacher.1@hu-berlin.de
+% Copyright (C) 2009-2017 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% olaf.dimigen@hu-berlin.de
 
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -21,12 +21,12 @@
 % along with this program; if not, write to the Free Software
 % Foundation, 51 Franklin Street, Boston, MA 02110-1301, USA
 
-function [ hasPartner ] = findmatchingevents( events_eeg, events_et, sampleradius )
+function [ hasPartner ] = findmatchingevents(events_eeg, events_et, searchRadius)
 
 hasPartner = zeros(size(events_eeg,1),2);
 
-% go tru EEG events (events_eeg)
-% is there an event_et of same type within sampleradius samples?
+% go tru EEG events in [events_eeg]:
+% is there an event_et of same type within sampleRadius samples?
 for e = 1:size(events_eeg,1)
     try
         % find events of the same type (e.g., "123") in ET
@@ -35,16 +35,16 @@ for e = 1:size(events_eeg,1)
         % get temporal distances to all matching events
         distances = (events_et(sameType,3) - events_eeg(e,3));
         
-        % mark ET events within a reasonable temporal distance
-        closeEnough = abs(distances) <= sampleradius;
+        % mark ET events within reasonable temporal distance (searchRadius)
+        closeEnough = abs(distances) <= searchRadius;
         
-        % multiple matching events nearby?
+        % are *multiple* matching events nearby? this complicates the matching!
         if sum(closeEnough)>1
-            fprintf('\n%s(): Warning: For event type \"%i\", multiple (%i) events were found within radius of %i samples!',mfilename,events_eeg(e,1),sum(closeEnough),sampleradius)
+            warning('%s(): For event type \"%i\", multiple (%i) ET events were found within the searchRadius of %i samples around the EEG event! We will take the closest ET event. However, this can cause trouble for synchronization. If you have send many events of the same type in close temporal succession during your experiment, then consider decreasing the \"searchRadius\" in function pop_importeyetracker',mfilename,events_eeg(e,1),sum(closeEnough),searchRadius);
             [val_min,ix_min] = min(abs(distances(closeEnough)));
             % if multiple matching events are found, take closest one
             % prefer earlier one in case of same distance, i.e.,
-            % prefer -1 over +1
+            % prefer the onse with distance -1 over the one with +1
             hasPartner(e,:) = [sameType(ix_min),val_min];
         else % default: one matching event found
             hasPartner(e,:) = [sameType(closeEnough), distances(closeEnough)];
@@ -54,7 +54,8 @@ for e = 1:size(events_eeg,1)
     end
 end
 
-% Note: the following exotic scenario is not addressed: two EEG events reference
-% the same nearby ET event, because the event was only transmitted to the ET once (and lost once)
-
+% Please note: the following exotic scenario is not addressed by this
+% function: two close-by EEG events reference the same nearby ET event,
+% because the event was only transmitted to the ET once rather than twice
+% (because the event was "lost" once in the ET)
 end

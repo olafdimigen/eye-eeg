@@ -1,8 +1,8 @@
 function eventTable = cleantriggers(timeAndTrigger)
-% small helper function called by parseeyelink() and parsesmi()
+% small helper function called by parseeyelink(), parsesmi(), parsetobii()
 %
-% Take only rising flank of trigger = first sample of trigger 
-% pulses that last several samples
+% Take only rising flank of trigger = first sample of trigger  pulses that
+% last several samples
 % Discard samples where parallel port input is zero
 % timeAndTrigger = [timeStamps, triggerColumn]
 

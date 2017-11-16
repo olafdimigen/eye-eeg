@@ -60,6 +60,7 @@
 %                     this new saccade is defined as the movement that 
 %                     occurs between the onset of the 1st saccade in the
 %                     cluster and the offset of the last sacc. in cluster
+%                     WARNING: CLUSTERMODE 4 is experimental and untested!  
 %   plotfig      - [0/1] Show a figure with eye movement properties?
 %                  0: do not plot a figure. 
 %                  1: plot a figure displaying properties of detected 
@@ -95,9 +96,9 @@
 % pixel corresponded to 0.037 degrees of visual angle. 
 % The raw data is smoothed prior to saccade detection (smooth: 1). 
 % Adaptive velocity thresholds (X and Y-threshold for each eye) are 
-% determined individually for each data epoch (globalthresh: 0). Saccades 
-% that are separated by fixations of less than 25 samples are combined into 
-% a single saccade (clusterdist: 25, clustermode: 4). A figure with the 
+% determined individually for each data epoch (globalthresh: 0). For saccades 
+% separated by fixations of less than 25 samples, only the first saccade 
+% is kept (clusterdist: 25, clustermode: 2). A figure with the 
 % results is plotted. Detected saccades are stored as new events in 
 % EEG.event, but fixations are not stored.
 % 
@@ -112,8 +113,8 @@
 % low retinal image slip, PNAS, Vol. 103 (18), 7192-7197
 %
 % Author: od
-% Copyright (C) 2009-2013 Olaf Dimigen & Ulrich Reinacher, HU Berlin
-% olaf.dimigen@hu-berlin.de / ulrich.reinacher.1@hu-berlin.de
+% Copyright (C) 2009-2017 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -158,10 +159,9 @@ r_msdy = NaN(nepochs,1);
 % warn message if back-to-back saccades are detected
 clusterwarning = false;
 
-
 % critical bugfix 2013-10-01, by OD
 % due to bug in third-party function "smoothdata":
-% function smoothdata() was removed from the plugin
+% function smoothdata() was removed from the toolbox
 % function vecvel() was updated to incorporate different levels of smoothing:
 % options:
 % - smoothlevel 0: no smoothing, simple diff()
@@ -185,7 +185,7 @@ else
     fprintf('\nDetecting saccades after Engbert & Mergenthaler (2006)\n')
     fprintf('\nVelocity threshold factor (vfac):  %.2f SD',vfac);
     fprintf('\nMinimum saccade duration (mindur): %.2f samples (%.2f ms)',mindur,mindur*1000/EEG.srate);
-    if ~isempty(degperpixel)
+    if ~isempty(degperpixel) | isnan(degperpixel) % bugfix 2016-11-12 by OD: added case if degperpixel = NaN (from GUI input) 
         fprintf('\nVisual angle per screen pixel:     %f°',degperpixel);
         metric = 'deg';
     else
@@ -196,12 +196,12 @@ else
     if nepochs < 2, fprintf('\n-- Using continuous data.'), else fprintf('\n-- Using epoched data.'); end
     if ldata && rdata, fprintf('\n-- Using binocular data:'); else fprintf('\n-- Using monocular data:'); end
     if ldata
-        fprintf('\n\tLeft horiz.: %s',EEG.chanlocs(left_eye_xy(1)).labels);
-        fprintf('\n\tLeft verti.: %s',EEG.chanlocs(left_eye_xy(2)).labels);
+        fprintf('\n\tLeft horiz.: \"%s\"',EEG.chanlocs(left_eye_xy(1)).labels);
+        fprintf('\n\tLeft verti.: \"%s\"',EEG.chanlocs(left_eye_xy(2)).labels);
     end
     if rdata
-        fprintf('\n\tRight horiz.: %s',EEG.chanlocs(right_eye_xy(1)).labels);
-        fprintf('\n\tRight verti.: %s',EEG.chanlocs(right_eye_xy(2)).labels);
+        fprintf('\n\tRight horiz.: \"%s\"',EEG.chanlocs(right_eye_xy(1)).labels);
+        fprintf('\n\tRight verti.: \"%s\"',EEG.chanlocs(right_eye_xy(2)).labels);
     end    
     if smooth, fprintf('\n-- Raw data is smoothed in 5-sample window.'); else fprintf('\n-- Raw data is not smoothed.'); end
     if nepochs > 1
@@ -241,12 +241,12 @@ for e=1:nepochs
     if ldata
         l = EEG.data([left_eye_xy(1) left_eye_xy(2)],:,e)';
         vl = vecvel(l,EEG.srate,smoothlevel);
-        [l_msdx(e) l_msdy(e)] = velthresh(vl);
+        [l_msdx(e), l_msdy(e)] = velthresh(vl);
     end
     if rdata
         r = EEG.data([right_eye_xy(1) right_eye_xy(2)],:,e)';
         vr = vecvel(r,EEG.srate,smoothlevel);
-        [r_msdx(e) r_msdy(e)] = velthresh(vr);
+        [r_msdx(e), r_msdy(e)] = velthresh(vr);
     end
 end
 
@@ -304,7 +304,7 @@ for e=1:nepochs
         % define saccade duration as difference between saccade offset and
         % saccade onset sample. In saccpar(), monocular saccade durations
         % of both eyes are averaged, leading to uneven values (e.g.: 10.5
-        % samples) different from the different between onset and offset
+        % samples) different from the difference between onset and offset
         % values (which are the monocular extremes).
         % Instead: use difference between offset and onset
         sac(:,3) = sac(:,2)-sac(:,1)+1;
@@ -551,7 +551,7 @@ if writefix || writesac
     if any(cellfun(@(x) any(strcmp(x,em_types)),{EEG.event.type})) % updated [v.0.337]
         fprintf('\n--------------------------------------------------------------------')
         fprintf('\n*** WARNING! ***:\nFound existing eye movement events in EEG.event!');
-        fprintf('\nNew events will be added to existing events.');
+        fprintf('\nNew events will be added to already existing events.');
     end
     
     % write saccades

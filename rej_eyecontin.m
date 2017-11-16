@@ -4,13 +4,25 @@
 %                data with eye blinks, to control fixation position, and to
 %                reject intervals bad eye tracking data prior to saccade or
 %                fixation detection.
+%
+%                There are two possibilities:
+%                METHOD 1: reject bad intervals and insert boundary events 
+%                (=data breaks) at that position. This actually removes the 
+%                intervals with bad data from the dataset.
 %                EEGLAB function pop_select() is used to do the actual
 %                rejection. A new boundary event is added at the position
 %                of each of the resulting data breaks. To perform a similar
 %                rejection for epoched data, use pop_rej_eyeepoch.
 %
+%                METHOD 2: just detect bad intervals in the eye tracking data,
+%                but keep the actual data intervals. Instead, information 
+%                about the start and endpoints of bad intervals is stored 
+%                in the field EEG.etc.eyetracker_badintervals. These bad
+%                intervals will not be ignored by the saccade detection
+%                algorithm (function pop_detecteyemovmenents).
+%
 % Usage:
-%   >> EEG = rej_eyecontin(EEG,chns,minvals,maxvals,windowsize)
+%   >> EEG = rej_eyecontin(EEG,chns,minvals,maxvals,windowsize,method)
 %
 % Inputs:
 %   EEG          - [string] EEG struct, also containing synchronized eye
@@ -38,14 +50,18 @@
 %                  the partial occlusion of the pupil while the eye is 
 %                  closing and re-opening) that may otherwise not exceed 
 %                  the minvals/maxvals thresholds.
+%   method      -  [1 or 2] rejection method. 
+%                  1: reject bad data intervals.
+%                  2: store bad intervals in EEG.etc.eyetracker_badintervals
+%                  but keep them in the data    
 %
 % Outputs:
-%   EEG         - EEG structure with bad intervals removed. For each
-%                 removed interval of bad data, a new boundary event is
-%                 inserted into EEG.event.
+%   EEG         - EEG structure with bad intervals removed or detected. 
+%                 For each removed interval of bad data, a new boundary 
+%                 event is inserted into EEG.event.
 %
 %   An example call of the function might look like this:
-%   >> EEG = rej_eyecontin(EEG,[33 34],[1 1],[1024 768],50)
+%   >> EEG = rej_eyecontin(EEG,[33 34],[1 1],[1024 768],50, 1)
 %
 %   In this example, the data of channels 33 and 34, containing the
 %   horizontal (33) and vertical (34) position of the left eye, are tested
@@ -61,8 +77,8 @@
 % See also: pop_rej_eyecontin, pop_rej_eyeepoch, pop_select
 %
 % Author: od
-% Copyright (C) 2009-2013 Olaf Dimigen & Ulrich Reinacher, HU Berlin
-% olaf.dimigen@hu-berlin.de / ulrich.reinacher.1@hu-berlin.de
+% Copyright (C) 2009-2017 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -161,7 +177,7 @@ else
             fprintf('\nRemoving bad intervals from continuous data...\n\n')
             EEG = pop_select(EEG,'nopoint',seq_bad(:,1:2));
             
-        case 2 % alternative in future versions of plugin
+        case 2 % alternative in future versions of toolbox
             % do not remove data, but introduce new badeye event
             % - create 'badeye' event in EEG.event
             % - data is kept, but no saccades and fixations will be 

@@ -2,25 +2,25 @@
 %    recorded eye tracking and EEG data
 %
 %  Description:
-%   EYE-EEG is a plugin for EEGLAB written to facilitate joint analyses
+%   EYE-EEG is an extension for EEGLAB written to facilitate joint analyses
 %   of eye tracking and electroencephalographic (EEG) data. Among other
 %   things, it can be used for fixation control, objective eye artifact
 %   rejection, pupillometry, saccade and fixation detection, control of
 %   microsaccades, eye tracker-supported ICA component selection, basic
 %   oculomotor research, or computing fixation-related potentials (FRPs).
 %
-%   EYE-EEG was developed by Olaf Dimigen & Ulrich Reinacher at 
-%   Humboldt University at Berlin, Germany
+%   EYE-EEG was developed by Olaf Dimigen and Ulrich Reinacher at 
+%   Humboldt University at Berlin, Germany, 2009-2017
 %
 %   >> web: http://www2.hu-berlin.de/eyetracking-eeg
 %
-%   Copyright (C): Olaf Dimigen & Ulrich Reinacher, 2009-2013
+%   Copyright (C): Olaf Dimigen & Ulrich Reinacher, 2009-2017
 %   User feedback welcome: email: olaf.dimigen@hu-berlin.de
 %
 %   Project made possible by a grant from Deutsche Forschungsgemeinschaft
 %   to Research Group 868, http://mbd.uni-potsdam.de
 %
-%   If you use functions of this plugin, please cite this reference:
+%   If you use functions of this toolbox, please cite this reference:
 %   ------------------------------------------------------------------
 %   Dimigen, O., Sommer, W., Hohlfeld, A., Jacobs, A., & Kliegl, R. (2011).
 %   Coregistration of eye movements and EEG in natural reading: Analyses
@@ -39,8 +39,12 @@
 %   eye movement artifacts in electroencephalographic data. Frontiers in
 %   Human Neuroscience, doi: 10.3389/fnhum.2012.00278
 %
+%   Please clarify that you have used the implementation of these methods
+%   in EYE-EEG, as they may differ from the original versions in some
+%   regards
+%
 %   Installation:
-%   Simply copy the folder called "eye_eegX.XX" containing the plugin m-files
+%   Simply copy the folder called "eye_eegX.XX" containing the toolbox's m-files
 %   as a subdirectory into the EEGLAB plugin directory and restart EEGLAB.
 %
 %   GUI functions
@@ -52,9 +56,12 @@
 %   <a href="matlab:helpwin pop_importeyetracker">pop_importeyetracker</a>   - import & synchronized eye tracking data
 %   <a href="matlab:helpwin pop_parseeyelink">pop_parseeyelink</a>       - preprocess eye tracking data from SR Research
 %   <a href="matlab:helpwin pop_parsesmi">pop_parsesmi</a>           - preprocess eye tracking data from Sensomot. Instr.
+%   <a href="matlab:helpwin pop_parsetobii">pop_parsetobii</a>           - preprocess eye tracking data from Tobii
 %   <a href="matlab:helpwin pop_rej_eyecontin">pop_rej_eyecontin</a>      - reject cont. data with out-of-range eye track
 %   <a href="matlab:helpwin pop_rej_eyeepochs">pop_rej_eyeepochs</a>      - reject epochs with out-of-range eye track
-%
+%   <a href="matlab:helpwin pop_checksync">pop_checksync</a>      - assess quality of ET/EEG synchronization via cross-correlation
+%   <a href="matlab:helpwin pop_ploteventrate">pop_ploteventrate</a>      - plot rate of saccades or fixations relative to the epoch time-locking event
+
 %   Non-GUI functions
 %   ----------------------------------------------------
 %   <a href="matlab:helpwin addevents">addevents</a>              - add many events/urevents to cont. or epoched data
@@ -64,6 +71,7 @@
 %   <a href="matlab:helpwin geticvariance">geticvariance</a>          - compute IC variance inside/outside saccades
 %   <a href="matlab:helpwin parseeyelink">parseeyelink</a>           - see pop function
 %   <a href="matlab:helpwin parsesmi">parsesmi</a>               - see pop function
+%   <a href="matlab:helpwin parsetobii">parsetobii</a>               - see pop function
 %   <a href="matlab:helpwin rej_eyecontin">rej_eyecontin</a>          - see pop function
 %   <a href="matlab:helpwin hist2d">hist2d</a>                 - 2-dimensional histogram
 %   <a href="matlab:helpwin cleantrigger">cleantrigger</a>           - helper function
@@ -71,6 +79,7 @@
 %   <a href="matlab:helpwin findsequence2">findsequence2</a>          - helper function
 %   <a href="matlab:helpwin ploteyemovements">ploteyemovements</a>       - plot properties of saccades & fixations
 %   <a href="matlab:helpwin synchronize">synchronize</a>            - synchronize ET/EEG data
+%   <a href="matlab:helpwin checksync">checksync</a>                - assess quality of ET/EEG synchronization via cross-correlation
 %
 %   Non-GUI functions for saccade & fixation detection
 %   ----------------------------------------------------
@@ -105,6 +114,8 @@
 %   <a href="matlab:helpwin dlg_rej_eyecontin">dlg_rej_eyecontin</a>
 %   <a href="matlab:helpwin dlg_rej_eyeepochs">dlg_rej_eyeepochs</a>
 %   <a href="matlab:helpwin dlg_syncsettings">dlg_syncsettings</a>
+%   <a href="matlab:helpwin dlg_ploteventrate">dlg_ploteventrate</a>
+%   <a href="matlab:helpwin dlg_checksync">dlg_checksync</a>
 %   ----------------------------------------------------
 %
 % This program is free software; you can redistribute it and/or modify
@@ -127,7 +138,7 @@
 
 function vers = eegplugin_eye_eeg(fig,try_strings,catch_strings)
 
-vers = 'eye_eeg_v0.41';
+vers = 'eye_eeg_v0.80';
 
 % add subfolder for dialogues and other helpers
 addpath(fullfile(fileparts(which(mfilename)),'internal'));
@@ -137,9 +148,11 @@ addpath(fullfile(fileparts(which(mfilename)),'internal'));
 % PARSE EYE TRACKER RAW DATA
 cb_parsesmi         = [try_strings.no_check, '[ET LASTCOM]  = pop_parsesmi; clear ET;', catch_strings.add_to_hist];
 cb_parseeyelink     = [try_strings.no_check, '[ET LASTCOM]  = pop_parseeyelink; clear ET;', catch_strings.add_to_hist];
+cb_parsetobii       = [try_strings.no_check, '[ET LASTCOM]  = pop_parsetobii; clear ET;', catch_strings.add_to_hist];
 
 % IMPORT & SYNCHRONIZE EYE TRACK
 cb_importeyetracker = [try_strings.check_cont, '[EEG LASTCOM] = pop_importeyetracker(EEG);', catch_strings.new_and_hist];
+cb_checksync        = [try_strings.check_data, '[EEG LASTCOM] = pop_checksync(EEG);', catch_strings.add_to_hist];
 
 % PREPROCESS EYE TRACK
 cb_rej_eyeepochs    = [try_strings.check_epoch, '[EEG LASTCOM] = pop_rej_eyeepochs(EEG);', catch_strings.new_and_hist];
@@ -166,8 +179,11 @@ cb_detectem_1       = [try_strings.no_check,  '[EEG LASTCOM] = pop_detecteyemove
 % PLOT SACCADES & FIXATIONS
 cb_plotem_1         = [try_strings.no_check,  '[EEG LASTCOM] = pop_ploteyemovements(EEG);', catch_strings.add_to_hist];
 
+% PLOT SACCADES & FIXATIONS
+cb_plotrate         = [try_strings.no_check,  '[LASTCOM]     = pop_ploteventrate(EEG);', catch_strings.add_to_hist];
+
 % EYETRACKER-SUPPORTED ICA
-cb_etICA            = [try_strings.check_ica, '[EEG LASTCOM] = pop_eyetrackerica(EEG);', catch_strings.add_to_hist];
+cb_etICA            = [try_strings.check_ica, '[EEG vartable LASTCOM] = pop_eyetrackerica(EEG);', catch_strings.add_to_hist];
 
 
 %% create GUI menus
@@ -194,9 +210,14 @@ set(eyetracker_m, 'foregroundcolor', PLUGINMENUCOLOR);
 parseEyetracker_m = uimenu( eyetracker_m, 'Label', 'Parse eyetracker raw data', 'Separator', 'on');
 uimenu( parseEyetracker_m, 'Label', 'text file from Eyelink', 'CallBack', cb_parseeyelink);
 uimenu( parseEyetracker_m, 'Label', 'text file from SMI', 'CallBack', cb_parsesmi);
+uimenu( parseEyetracker_m, 'Label', 'text file from Tobii', 'CallBack', cb_parsetobii);
 
 % "IMPORT & SYNCHRONIZE ET"
 uimenu( eyetracker_m, 'Label', 'Import & synchronize ET', 'CallBack', cb_importeyetracker, 'Separator', 'off', 'userdata', 'epoch:off; ');
+uimenu( eyetracker_m, 'Label', 'Evaluate synchronization (cross-corr.)', 'CallBack', cb_checksync, 'Separator', 'off', 'userdata', 'startup:off;'); % epoch:off;'  
+%uimenu( eyetracker_m, 'Label', 'Evaluate synchronization (cross-corr.)', 'CallBack', cb_checksync, 'Separator', 'off', 'userdata', 'epoch:off; ');
+
+
 
 % APPLY FUNCTION TO SELECTED CHANNELS
 helpers_m = uimenu( eyetracker_m, 'Label', 'Apply function to selected channels', 'Separator', 'on',  'userdata', 'startup:off;');
@@ -229,7 +250,8 @@ try
             uimenu( filters_m, 'Label', 'Short non-linear IIR filter', 'CallBack', cb_envelope_f4, 'Separator', 'on', 'userdata', 'startup:off; ');
         end
     else
-        warning('iirfilt plugin not found in plugin folder)')
+        %warning('iirfilt plugin not found in plugin folder)')
+        % #bugfix OD: removed this warning in v0.44, since iirfilt.m is not "shipped" with EEGLAB per default anymore
     end
     
     % firfilt plugin installed? if so, add menu entries
@@ -265,8 +287,11 @@ uimenu( eyetracker_m, 'Label', 'Detect saccades & fixations', 'CallBack', cb_det
 % "PLOT SACCADES & FIXATIONS"
 uimenu( eyetracker_m, 'Label', 'Plot eye movement properties', 'CallBack', cb_plotem_1, 'Separator', 'off', 'userdata', 'startup:off;  ');
 
+% "PLOT SACCADES & FIXATIONS"
+uimenu( eyetracker_m, 'Label', 'Plot eye movement rate', 'CallBack', cb_plotrate, 'Separator', 'off', 'userdata', 'startup:off;  ');
+
 % "REJECT COMPONENTS WITH ET"
 uimenu( eyetracker_m, 'Label', 'Reject components with eyetracker', 'CallBack', cb_etICA, 'Separator', 'off', 'userdata', 'startup:off;  ');
 
-% "ABOUT THE PLUGIN"
-uimenu( eyetracker_m, 'Label', 'About this plugin', 'CallBack', 'pophelp(''eegplugin_eye_eeg.m'');', 'Separator', 'on', 'userdata', 'startup:on;');
+% "ABOUT THE TOOLBOX"
+uimenu( eyetracker_m, 'Label', 'About this toolbox', 'CallBack', 'pophelp(''eegplugin_eye_eeg.m'');', 'Separator', 'on', 'userdata', 'startup:on;');

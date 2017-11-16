@@ -3,8 +3,12 @@
 % Inputs:
 %   data       - [matrix with ndim columns]. Each row is one observation.
 %                Each columns contains the data for one dimension.
-%   bins       - [vector of length n]. Defines the histogram bins used for 
-%                the corresponding dimension (data column) in 'data'
+%
+%  nbins       - [vector of length ndim]. Setsthe number of histogram bins 
+%                used for the corresponding dimension (data column) in 'data'. 
+%                For example [200 100], if the data of the first dimension
+%                should be split into 200 bins and the data of the 2nd
+%                dimensions into 100 bins.
 %
 % Outputs:
 %   pointCount - counts per bin
@@ -12,8 +16,8 @@
 %                dimension
 %
 % Author: ur
-% Copyright (C) 2009-2013 Olaf Dimigen & Ulrich Reinacher, HU Berlin
-% olaf.dimigen@hu-berlin.de / ulrich.reinacher.1@hu-berlin.de
+% Copyright (C) 2009-2017 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -29,7 +33,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, 51 Franklin Street, Boston, MA 02110-1301, USA
 
-function [pointCount, dimCenters] = hist2d(data,bins)
+function [pointCount, dimCenters] = hist2d(data,nbins)
 
 % friendly feedback
 if any(isinf(data))
@@ -45,10 +49,10 @@ if indexOfNaN
 end
 [nrPoints,nrDims] = size(data);
 
-if ~exist('bins','var')
-    bins = repmat(10,1,nrDims);
-elseif length(bins) == 1
-    bins = repmat(bins,1,nrDims);
+if ~exist('nbins','var')
+    nbins = repmat(10,1,nrDims);
+elseif length(nbins) == 1
+    nbins = repmat(nbins,1,nrDims);
 end
 
 binCoords  = cell(1,nrDims);
@@ -57,17 +61,18 @@ dimEdges   = cell(1,nrDims);
 
 %% greater or equal
 for loop = 1:nrDims
-    dimEdges{loop}   = linspace(min(data(:,loop)), max(data(:,loop)), bins(loop)+1);
+    
+    dimEdges{loop}   = linspace(min(data(:,loop)), max(data(:,loop)), nbins(loop)+1);
     dimCenters{loop} = mean([dimEdges{loop}(1:end-1);dimEdges{loop}(2:end)]);
     dimEdges{loop}(end) = [];
-    binCoords{loop} = sum( repmat( data(:,loop),1, bins(loop)) >= repmat(dimEdges{loop},nrPoints,1) ,2);
-    if any(~ismember(binCoords{loop},1:bins(loop)))
+    binCoords{loop} = sum( repmat( data(:,loop),1, nbins(loop)) >= repmat(dimEdges{loop},nrPoints,1) ,2);
+    if any(~ismember(binCoords{loop},1:nbins(loop)))
         error(sprintf('%s:BinAllocationWrong',mfilename),'Something went wrong during processing of dimension %d',loop)
     end
 end
 
 %%
-linBinCoords = sub2ind(bins,binCoords{1},binCoords{2});
-pointCount   = hist(linBinCoords,1:prod(bins));
-pointCount   = reshape(pointCount,bins);
+linBinCoords = sub2ind(nbins,binCoords{1},binCoords{2});
+pointCount   = hist(linBinCoords,1:prod(nbins));
+pointCount   = reshape(pointCount,nbins);
 %pointCount = rot90(pointCount);

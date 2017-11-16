@@ -1,4 +1,4 @@
-% eyetrackerica() - reject independent components based on their 
+% eyetrackerica() - reject independent components based on their
 %                   covariance with the simultaneously recorded eye track
 %
 % Usage:
@@ -6,20 +6,20 @@
 %                          threshratio,flagmode,plotfig,topomode)
 %
 % Inputs:
-%  EEG        - [string] EEG struct. EEG must already contain extra 
+%  EEG        - [string] EEG struct. EEG must already contain extra
 %               channels with synchronized eye tracking data
 %               (>> pop_importeyetracker()) and both saccade and fixation
 %               events (imported or by using pop_detecteyemovements)
 %  sacstring  - [string] name of saccade event (in EEG.event).
-%               This is 'saccade' per default, but may differ if saccades 
+%               This is 'saccade' per default, but may differ if saccades
 %               were imported from Eyelink raw data (e.g. 'L_saccade')
 %  fixstring  - [string] name of fixation event (in EEG.event).
-%               This is 'fixation' per default, but may differ if fixations 
+%               This is 'fixation' per default, but may differ if fixations
 %               were imported from Eyelink raw data (e.g. 'R_fixation')
-%  sactol     - [vector of two integers], e.g. [5 10]. 
+%  sactol     - [vector of two integers], e.g. [5 10].
 %               Extra temporal tolerance around saccade onset and offset.
-%               Saccade intervals will range from saccade-onset minus 
-%               window(1) samples until saccade-offset plus window(2) 
+%               Saccade intervals will range from saccade-onset minus
+%               window(1) samples until saccade-offset plus window(2)
 %               samples. Correspondingly, the tolerance will be substracted
 %               from the fixation intervals.
 %  threshratio - critical variance ratio threshold for component rejection.
@@ -28,16 +28,16 @@
 %               component will be flagged for rejection.
 %  flagmode  -  [integer: either 1,2, or 3]
 %               1: do not flag any components for rejection (test mode)
-%               2: flag components for rejection in EEG.reject.gcompreject, 
+%               2: flag components for rejection in EEG.reject.gcompreject,
 %               keep existing rejection flags (e.g. those flagged manually)
 %               3: flag components for rejection in EEG.reject.gcompreject,
 %               overwrite all existing flags in EEG.reject.gcompreject, i.e.
 %               components formely flagged as "bad" may be changed to "good"
 %  plotfig   -  <boolean> [0/1] - show figure to evaluate the rejection
 %               threshold
-%  topomode  -  <integer: 1,2,3, or 4> - determines whether after 
-%               eyetrackerica a figure is shown with the 2D topographies of 
-%               flagged (bad and/or good) components (using pop_selectcomp). 
+%  topomode  -  <integer: 1,2,3, or 4> - determines whether after
+%               eyetrackerica a figure is shown with the 2D topographies of
+%               flagged (bad and/or good) components (using pop_selectcomp).
 %               Figure allows to toggle rejection flags manually.
 %               Use one of four options:
 %               1: plot topos of "bad" and "good" components (2 figures)
@@ -47,10 +47,10 @@
 %               Note: Option 1:3 requires electrode coordinates.
 %
 % Outputs:
-%   EEG       - EEG structure with updated field EEG.reject.gcompreject. 
-%               If rejectmode 1 or 2 was used, EEG.reject.gcompreject will 
+%   EEG       - EEG structure with updated field EEG.reject.gcompreject.
+%               If rejectmode 1 or 2 was used, EEG.reject.gcompreject will
 %               contain updated flags flagging components with a variance
-%               ratio larger than threshratio 
+%               ratio larger than threshratio
 %   vartable  - [matrix of size ncomp x 3]
 %               Columns of [vartable] contain the following information:
 %               vartable(:,1): mean IC variance during saccade intervals
@@ -60,38 +60,49 @@
 %               during saccades than during fixations, and may therefore
 %               reflect corneoretinal or myogenic ocular artifact
 %
-% To actually remove the flagged components from your data, use EEGLAB 
+% To actually remove the flagged components from your data, use EEGLAB
 % menu "Tools" > "Remove Components" or function pop_subcomp() afterwards
 %
 % See also: pop_eyetrackerica, geticvariance
 %
 % Example: A call of the function might look like this:
 %
-% >> [EEG vartable] = eyetrackerica(EEG,'saccade','fixation',[10 5],1.1,3,1,1)
+% >> [EEG vartable] = eyetrackerica(EEG,'saccade','fixation',[5 0],1.1,3,1,1)
 %
 % Explanation: compute the variance of the activity time course of each IC
 % within saccade events (of type 'saccade' in EEG.event) and fixation
-% events (of type 'fixation' in EEG.event). For this analysis, saccade 
-% intervals are defined as lasting from 10 samples before fixation onset 
-% until 5 samples after saccade offset [sactol]. Conversely, variance for
-% fixation intervals is computed from 5 samples after fixation onset until 
-% 10 samples before fixation offset. If the variance ratio 
-% [var(sac)/var(fix)] for a component is larger than 1.1, set this 
+% events (of type 'fixation' in EEG.event). For this analysis, saccade
+% intervals are defined as lasting from 5 samples before fixation onset
+% until 0 samples after saccade offset [sactol]. Conversely, variance for
+% fixation intervals is computed from 0 samples after fixation onset until
+% 5 samples before fixation offset. If the variance ratio
+% [var(sac)/var(fix)] for a component is larger than 1.1, set this
 % component to "reject". Overwrite existing rejection flags already present
 % in EEG.reject.gcompreject. Show an extra figure to evaluate the setting
 % for the threshold (maxcrit). Plot 2D topographies of components flagged
 % as good and bad.
 %
+% WARNING: Do not use this function on resampled EEG data.
+% This function requires the information about the duration of
+% saccades and fixations from EEG.event.duration. If you have RESAMPLED
+% your EEG file (pop_resample) after eye movement events were inserted,
+% the duration of these events will not be correct anymore, since EEGLAB's
+% pop_resample function does not update the EEG.event.duration fields.
+% So the outputs of the current function may be incorrect for resampled
+% EEG data. In other words, be careful with this function if you have
+% changed the sampling rate of your EEG data (thanks to
+% C. Huber-Huber for this bug report).
+%
 % The saccade/fixation "variance ratio" criterion was proposed by:
 %
-% Plöchl, M., Ossandon, J.P., & König, P. (2012). Combining EEG and 
-% eye tracking: identification, characterization, and correction of eye 
-% movement artifacts in electroencephalographic data. Frontiers in Human 
+% Plöchl, M., Ossandon, J.P., & König, P. (2012). Combining EEG and
+% eye tracking: identification, characterization, and correction of eye
+% movement artifacts in electroencephalographic data. Frontiers in Human
 % Neuroscience, doi: 10.3389/fnhum.2012.00278.
 %
 % Author: od
-% Copyright (C) 2009-2013 Olaf Dimigen & Ulrich Reinacher, HU Berlin
-% olaf.dimigen@hu-berlin.de / ulrich.reinacher.1@hu-berlin.de
+% Copyright (C) 2009-2017 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% olaf.dimigen@hu-berlin.de
 
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -107,7 +118,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, 51 Franklin Street, Boston, MA 02110-1301, USA
 
-function [EEG vartable] = eyetrackerica(EEG,sacstring,fixstring,sactolerance,threshratio,flagmode,plotfig,topomode)
+function [EEG, vartable] = eyetrackerica(EEG,sacstring,fixstring,sactolerance,threshratio,flagmode,plotfig,topomode)
 
 %% check whether ICA was computed
 if isempty(EEG.icaweights)
@@ -187,7 +198,7 @@ end
 
 %% show figure to evaluate variance ratio threshold
 if plotfig
-    fprintf('\n%s(): Plotting figure with eyetrackerica results...',mfilename);   
+    fprintf('\n%s(): Plotting figure with eyetrackerica results...',mfilename);
     figure('Name','eyetrackerica: Results');
     ncomp = length(varratio);
     
@@ -208,7 +219,7 @@ if plotfig
     xlim([0.5 ncomp+0.5])
     l = legend(h2,sprintf('Threshold of %.3f',threshratio));
     set(l,'box','off','Fontsize',8);
-    %axis square; 
+    %axis square;
     box on;
     
     %% plot threshold (threshratio) vs. # of bad components
@@ -230,6 +241,16 @@ if plotfig
     box on;
 end
 
+%% Show pop_resample() EEG.event.duration warning if EEGLAB version < X
+try
+    vers1 = eeg_getversion;
+    firstdot = strfind(vers1,'.');
+    vers2 = str2double(vers1(1:firstdot+1)); % take .X version
+    if vers2 < 14.1 % pop_resample bug fixed in EEGLAB version 14.1
+        fprintf('\n\n%s(): WARNING! This function only provides correct results if you\ndid *NOT* change the SAMPLING RATE of your data. Before version 14.1 of EEGLAB,\n\tfunction pop_resample did not update EEG.event.duration after resampling leading to\nwrong saccade and fixation durations.',mfilename);
+    end
+catch
+end
 
 %% plot topos of flagged components
 if flagmode == 1 && ismember(topomode,1:3)
@@ -278,5 +299,6 @@ else
         end
     end
 end
+
 fprintf('\nDone.\n')
 end

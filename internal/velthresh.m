@@ -15,13 +15,13 @@ function [msdx msdy] = velthresh(vel)
 %
 % Note by olaf.dimigen@hu-berlin.de (OD): The code below was originally 
 % part of the microsacc() function by Engbert et al. but was outsourced 
-% into a stand-alone function for usage with the plugin. This allows to
+% into a stand-alone function for usage with this toolbox. This allows to
 % compute velocity thresholds globally (based on all epochs of a given 
 % participant) or to work with fixed rather than relative thresholds.
 
 % compute threshold
-msdx = sqrt( median(vel(:,1).^2) - (median(vel(:,1)))^2 );
-msdy = sqrt( median(vel(:,2).^2) - (median(vel(:,2)))^2 );
+msdx = sqrt( median(vel(:,1).^2) - (median(vel(:,1)) )^2 );
+msdy = sqrt( median(vel(:,2).^2) - (median(vel(:,2)) )^2 );
 if msdx<realmin
     msdx = sqrt( mean(vel(:,1).^2) - (mean(vel(:,1)))^2 );
     if msdx<realmin

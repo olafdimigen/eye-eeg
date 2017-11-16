@@ -35,7 +35,7 @@ function [sac, radius] = microsacc_plugin(x,vel,VFAC,MINDUR,MSDX,MSDY)
 %
 %-------------------------------------------------------------------
 % Note by olaf.dimigen@hu-berlin.de (2012):
-% This version of microsacc() has been modified for use with the plugin. 
+% This version of microsacc() has been modified for use with the EYE-EEG toolbox. 
 % msdx and msdy can now be provided as function inputs. Their computation 
 % is outsourced into new function velthresh(), which contains code that was 
 % formerly part of microsacc(). Helpful to compute threholds globally 
@@ -45,7 +45,7 @@ function [sac, radius] = microsacc_plugin(x,vel,VFAC,MINDUR,MSDX,MSDY)
 % // changes to original microsacc()
 % // olaf.dimigen@hu-berlin.de
 if nargin < 5
-    [msdx msdy] = velthreshold(vel);
+    [msdx msdy] = velthresh(vel);
 else
     msdx = MSDX;
     msdy = MSDY;

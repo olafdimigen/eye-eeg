@@ -1,4 +1,4 @@
-% addevents() - add new events to EEGLAB dataset
+% addevents() - efficiently add new events to a EEGLAB dataset
 %               adds new events to EEG.event, EEG.urvent (and EEG.epoch)
 %               can be applied to continuous and epoched datasets
 %
@@ -18,10 +18,10 @@
 %                'latency'
 %                'duration'
 %                'epoch' (only in case of epoched datasets)
-%   eventtype  - [string] type of event to be added. Note: Only one type of 
-%                event (EEG.event.type, e.g. "saccade") can be added with 
-%                each call of addevents(). However, many instances of this 
-%                particular event (e.g. 1000 saccades at once) can be added 
+%   eventtype  - [string] type of event to be added. Note: Only one type of
+%                event (EEG.event.type, e.g. "saccade") can be added with
+%                each call of addevents(). However, many instances of this
+%                particular event (e.g. 1000 saccades at once) can be added
 %                with each call.
 % Outputs:
 %
@@ -34,13 +34,13 @@
 %
 % This adds two new events of type "myEventType" to EEG.event and
 % EEG.urevent at latencies 1000 and 2000. Events have a duration of 1 and
-% both latencies fall into data epoch 2. The two new events will have the 
+% both latencies fall into data epoch 2. The two new events will have the
 % additional property 'EEG.event.someProperty' set to 456 and 789,
 % respectively.
 %
 % Authors: ur & od
-% Copyright (C) 2009-2013 Olaf Dimigen & Ulrich Reinacher, HU Berlin
-% olaf.dimigen@hu-berlin.de / ulrich.reinacher.1@hu-berlin.de
+% Copyright (C) 2009-2017 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% olaf.dimigen@hu-berlin.de
 
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -58,12 +58,24 @@
 
 function [EEG] = addevents(EEG,newevents,inputfldnames,eventtype)
 
+
+% bugfix on 2015-03-27: ANT data importer does not fill the EEG.urevent structure
+% leading to a crash of this function
+if isempty(EEG.urevent)
+    fprintf('\nWarning: EEG.urevent is empty. Recreating urevents with eeg_checkset before adding new events...\n')
+    EEG = eeg_checkset(EEG,'makeur')
+end
+
 n_existingevents   = length(EEG.event);
 n_existingurevents = length(EEG.urevent);
 n_newevents        = size(newevents,1);
 
-% universal row vectors for name cells
-existingfldnames = fieldnames(EEG.event)';
+if isempty(EEG.event)
+    existingfldnames = ''; % bugfix, Nov. 2017, OD, if EEG.event = [];
+else
+    % universal row vectors for name cells
+    existingfldnames = fieldnames(EEG.event)';
+end
 
 % for compatibility with MATLAB 2010a and lower
 [dim1 dim2] = size(inputfldnames);
@@ -132,7 +144,6 @@ for fld = 1:length(extrafields)
     end
     extrafields_isnumeric2(fld) = all(numeric2);
 end
-
 %%
 for ue=1:n_existingurevents
     for fld = 1:length(extrafields)
@@ -143,7 +154,6 @@ for ue=1:n_existingurevents
         end
     end
 end
-
 %%
 dummy = EEG.event(n_existingevents+1:end);
 dummy = rmfield(dummy,setxor(fieldnames(EEG.urevent),existingfldnames));
@@ -152,7 +162,8 @@ EEG.urevent = newurevent;
 
 %% calculate ur-latencies of new events
 
-if isempty(EEG.epoch) % data is epoched
+%% scenario A: data is still continuous
+if isempty(EEG.epoch)
     % true continuous or no consequence if EEG.xmin = 0
     latout = eeg_urlatency( EEG.event, [EEG.event(n_existingevents+1:end).latency] );
     if EEG.xmin ~= 0
@@ -172,29 +183,40 @@ if isempty(EEG.epoch) % data is epoched
         EEG.urevent(EEG.event(ee2).urevent).latency = latout(ee);
     end
     
-else % data is continuous
+    %% scenario B: data already epoched
+else
     offset = zeros(size(EEG.epoch));
+    
+    % retrieve infos for first existing event in epochs
     for ep = 1:length(EEG.epoch)
-        ancor = EEG.epoch(ep).event(1);
+        ancor = EEG.epoch(ep).event(1); % index in EEG.event of 1st event in epoch
         % possible since epoch struct still mirrors old EEG.event. So there
         % is no chance for an event without correct urevent.latency.
-        lat = EEG.event(ancor).latency;
-        urev = EEG.event(ancor).urevent;
-        urlat = EEG.urevent(urev).latency;
-        offset(ep) = urlat -lat;
+        
+        % get properties of 1st event in epoch...
+        lat   = EEG.event(ancor).latency;  % latency in epoched (3D) dataset
+        urev  = EEG.event(ancor).urevent;  % index in urevent
+        urlat = EEG.urevent(urev).latency; % latency in org. cont. (2D) dataset
+        % how is the latency of this 1st event in epoch after vs. before epochation?
+        % = difference urlat-lat
+        offset(ep) = urlat - lat;
     end
+    
     % go tru new events
     for ee = 1:n_newevents
         ee2 = n_existingevents+ee;
-        EEG.urevent(EEG.event(ee2).urevent).latency = EEG.event(ee).latency + offset(EEG.event(ee).epoch);
+        % BUGFIX: assign correct latencies for "new urevents" based on epoched dataset (Oct 18, 2017 by OD)
+        EEG.urevent(EEG.event(ee2).urevent).latency = EEG.event(ee2).latency + offset(EEG.event(ee2).epoch);
+        % The original, buggy line:
+        %EEG.urevent(EEG.event(ee2).urevent).latency = EEG.event(ee).latency + offset(EEG.event(ee).epoch); % original code as before Oct-2017
     end
 end
 
-%% sort merged events by latency
-% do not shift this to anyplace earlier in the function. 
+%% sort all of the new/merged events by latency
+% do not shift this to anyplace earlier in the function.
 % Calculation of urlatencies gets complicated otherwise
 EEG = pop_editeventvals(EEG,'sort',{'latency' 0 }); % resort events
-EEG = eeg_checkset(EEG,'eventconsistency');         % update EEG.epochs
+EEG = eeg_checkset(EEG,'eventconsistency');         % updates EEG.epochs (!)
 end
 
 %% helper function "mycellfun"

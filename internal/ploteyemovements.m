@@ -45,8 +45,8 @@
 % in pixels). This also affects the saccade angle.
 %
 % Author: od
-% Copyright (C) 2009-2013 Olaf Dimigen & Ulrich Reinacher, HU Berlin
-% olaf.dimigen@hu-berlin.de / ulrich.reinacher.1@hu-berlin.de
+% Copyright (C) 2009-2017 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -70,8 +70,8 @@ if ~exist('metric','var')
 end
 
 if ~exist('polar_flipy','var')
-    polar_flipy = true;
-    fprintf('\n%s(): Assuming that eye tracker coordinate system was in UPPER left screen corner.\nFlipping vertical axis of polar plot showing saccade angles!',mfilename)
+        polar_flipy = true;
+        fprintf('\n%s(): I am assuming that the origin of ET coordinate system is in the UPPER left screen corner.\nTherefore, I am flipping the vertical axis of the polar plot showing saccade angles!',mfilename)
 end
 
 %% display settings
@@ -108,7 +108,6 @@ else
 end
 
 %% plot figure
-
 if plotsac && plotfix
     figure('Name','Properties of saccades and fixations'); rows = 2; j = 3;
 elseif plotsac
@@ -144,11 +143,12 @@ if plotsac
     hline = findobj(gca,'Type','line');
     set(hline,'LineWidth',1.2); % make line thicker
     title('Saccades: Angular histogram','fontweight', 'bold')
+    polar_flipy
     if polar_flipy
         set(gca,'ydir','reverse');
         fprintf('\n%s(): Vertical axis of polar plot (showing saccade angles) is flipped.',mfilename)        
     else
-        fprintf('\n%s(): Vertical axis of polar plot (showing saccade angles) is not flipped.',mfilename)
+        fprintf('\n%s(): Vertical axis of polar plot (showing saccade angles) is NOT flipped.',mfilename)
     end
 end
 
@@ -198,4 +198,15 @@ if plotfix
     axis equal % x-y proportion
     axis tight
     box on
+end
+
+%% Show pop_resample() EEG.event.duration warning if EEGLAB version < X
+try
+    vers1 = eeg_getversion;
+    firstdot = strfind(vers1,'.');
+    vers2 = str2double(vers1(1:firstdot+1)); % take .X version
+    if vers2 < 14.1 % pop_resample bug fixed in EEGLAB version 14.1
+        fprintf('\n\n%s(): WARNING! This function only provides correct results if you\ndid *NOT* change the SAMPLING RATE of your data. Before version 14.2 of EEGLAB,\n\tfunction pop_resample did not update EEG.event.duration after resampling leading to\nwrong saccade and fixation durations.',mfilename);
+    end
+catch
 end

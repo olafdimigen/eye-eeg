@@ -58,7 +58,8 @@
 %                  4: combine all movements into one (longer) saccade
 %                     this new saccade is defined as the movement that 
 %                     occurs between the onset of the 1st saccade in the
-%                     cluster and the offset of the last sacc. in cluster
+%                     cluster and the offset of the last sacc. in cluster.
+%                     WARNING: CLUSTERMODE 4 is experimental and untested!  
 %   plotfig      - [0/1] Show a figure with eye movement properties?
 %                  0: do not plot a figure. 
 %                  1: plot a figure displaying properties of detected 
@@ -94,9 +95,9 @@
 % pixel corresponded to 0.037 degrees of visual angle. 
 % The raw data is smoothed prior to saccade detection (smooth: 1). 
 % Adaptive velocity thresholds (X and Y-threshold for each eye) are 
-% determined individually for each data epoch (globalthresh: 0). Saccades 
-% that are separated by fixations of less than 25 samples are combined into 
-% a single saccade (clusterdist: 25, clustermode: 4). A figure with the 
+% determined individually for each data epoch (globalthresh: 0). For saccades 
+% separated by fixations of less than 25 samples, only the first saccade 
+% is kept (clusterdist: 25, clustermode: 2). A figure with the 
 % results is plotted. Detected saccades are stored as new events in 
 % EEG.event, but fixations are not stored.
 % 
@@ -111,8 +112,8 @@
 % low retinal image slip, PNAS, Vol. 103 (18), 7192-7197
 %
 % Author: od
-% Copyright (C) 2009-2013 Olaf Dimigen & Ulrich Reinacher, HU Berlin
-% olaf.dimigen@hu-berlin.de / ulrich.reinacher.1@hu-berlin.de
+% Copyright (C) 2009-2017 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -144,7 +145,7 @@ try
     end
     
     % detect eye movements
-    EEG = detecteyemovements( EEG, left_eye_xy, right_eye_xy, vfac, mindur, degperpixel, smooth, globalthresh, clusterdist, clustermode, plotfig, writesac, writefix);
+    EEG = detecteyemovements(EEG, left_eye_xy, right_eye_xy, vfac, mindur, degperpixel, smooth, globalthresh, clusterdist, clustermode, plotfig, writesac, writefix);
     
 catch err
     if (strcmp(err.identifier,'MATLAB:unassignedOutputs'))

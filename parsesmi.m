@@ -21,7 +21,7 @@
 %                    electrophysiological recording.
 %
 % For more information on the optional input, please read the tutorial of
-% the plugin.
+% the toolbox.
 %
 %   An example use of the function might look like this:
 %   >> ET = parsesmi('/myrawdata/SAMPLES.txt','/myfiles/SAMPLES.mat')
@@ -35,8 +35,8 @@
 %   pop_parsesmi,  pop_importeyetracker
 %
 % Author: ur
-% Copyright (C) 2009-2013 Olaf Dimigen & Ulrich Reinacher, HU Berlin
-% olaf.dimigen@hu-berlin.de / ulrich.reinacher.1@hu-berlin.de
+% Copyright (C) 2009-2017 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -65,9 +65,7 @@ fprintf('\n-- reading txt...')
 
 fid = fopen(inputFile,'r');
 if fid == -1
-    fprintf('\nThe source file ''%s'' was not found.\n',inputFile)
-    return
-    % throw specific error as caller?
+   error('\nThe source file ''%s'' was not found.\n',inputFile)
 end
 B = fread(fid,'*char')';
 fclose(fid);
@@ -75,7 +73,6 @@ fprintf('\n\tDone.')
 
 %% file specifications and comments
 fprintf('\n-- getting comment lines and column headers...')
-
 et.comments = regexp(B,'(##[^\r\n]*\r\n)','match');
 
 %% build column header
@@ -111,6 +108,7 @@ et.data = sscanf(dataChar','%f',[nColumns,inf])';
 clear dataLines dataChar
 fprintf('\n\tDone.')
 
+
 %% check for empty columns in data array
 nColh = length(et.colheader);
 nDat  = size(et.data,2);
@@ -125,7 +123,6 @@ fprintf('\n-- getting messages...')
 et.messages = regexp(B,'\d*\tMSG[^\r\n]*\r\n','match');
 fprintf('\n\tDone.')
 
-
 %% build table with synchronization events for eye tracker
 
 % 1: check for messages containing special KEYWORD
@@ -137,8 +134,9 @@ if exist('triggerKeyword','var')
     
     % take care of leading whitespaces as well as missing trailing whitespaces
     % handle "MYKEYWORD 123" as well as "MYKEYWORD123"
-    test1 = regexp(et.messages,['(\d+)\s+MSG\s+\d+\s+#\sMessage:\s',triggerKeyword,'\s?(\d+)'],'tokens')';
-    test2 = [test1{:}]';
+    
+    test1 = regexp(et.messages,['(\d+)\s+MSG\s+\d+\s+#\sMessage:\s',triggerKeyword,'\s?(\d+)'],'tokens')';  
+    test2 = [test1{:}]';    
     test3 = cellfun(@str2double,test2,'UniformOutput',false);
     et.event = cell2mat(test3);
     if isempty(et.event)
@@ -162,6 +160,57 @@ else
 end
 
 clear test* triggerColIndex
+
+
+%% Extract timestamps of *other* messages (not eyeevent, not keyword-messages)
+% New feature, Jan-2017, OD
+% Identify messages that begin with 'MSG' (e.g. user-send messages) so that 
+% their timestamps can be later converted into "eeg time" in function 
+% synchronize(). Extracting this information should be helpful for user 
+% who have coded their experimental conditions (etc.) in the form of 
+% (SMI) messages
+if isfield(et,'messages') & ~isempty(et.messages)
+    
+    % go tru messages in et.messages
+    remove_this_msg = zeros(1,size(et.messages,2));
+    contains_keyword = [];
+    for m = 1:size(et.messages,2)
+        % does message line start with 'MSG'? --> include
+        contains_msg = ~isempty(strfind(et.messages{m},'MSG'));
+        % does message contain the user-defined keyword (sync message) --> exclude
+        if exist('triggerKeyword','var')
+            contains_keyword = ~isempty(strfind(et.messages{m},triggerKeyword));
+        end
+        % kick out
+        if ~contains_msg | contains_keyword
+            remove_this_msg(m) = true;
+        end
+    end
+    % now delete messages not starting with 'MSG' (e.g. eyeevents) or containing
+    % keyword since they are already stored elsewhere in the output. Also, this
+    % removes a few strange line-broken message lines that contain only numbers
+    % or only alphabetic chars (related to the calibration model)
+    tmp = et.messages;
+    tmp(:,find(remove_this_msg)) = []; % remove msg marked above
+    
+    if ~isempty(tmp)   
+        % now extract numeric timestamp from these remaining msg
+        %timestamps = regexp(tmp,'^-?\D+(\d+)','tokens','once','lineanchors');
+        timestamps = regexp(tmp,'^(\d+)','tokens','once','lineanchors');
+        timestamps = [timestamps{:}]';
+        timestamps = cellfun(@str2double,timestamps,'UniformOutput',false);
+        timestamps = cell2mat(timestamps);
+        
+        % store these messages in structure 'et.othermessages'
+        for j = 1:size(tmp,2)
+            et.othermessages(j).timestamp = timestamps(j); % numeric timestamps
+            et.othermessages(j).msg       = tmp{j}; % the msg string
+        end
+        clear tmp test* edfColHeader
+    end
+else
+    fprintf('\n\n%s(): Did not find any other messages (MSG) lines in the data\n.',mfilename)
+end
 
 %% save
 fprintf('\n-- saving structure as mat...')

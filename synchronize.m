@@ -6,8 +6,8 @@
 %                   n_eegsmp, doRegression, filterEyetrack, plotFig)
 %
 % Authors: ur & od
-% Copyright (C) 2009-2013 Olaf Dimigen & Ulrich Reinacher, HU Berlin
-% olaf.dimigen@hu-berlin.de / ulrich.reinacher.1@hu-berlin.de
+% Copyright (C) 2009-2017 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% olaf.dimigen@hu-berlin.de
 
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -23,18 +23,12 @@
 % along with this program; if not, write to the Free Software
 % Foundation, 51 Franklin Street, Boston, MA 02110-1301, USA
 
-function [ET, eegEvents, syncQuality] = synchronize(ET, startEndEvent, eegEvents, eegrate, n_eegsmp, doRegression, filterEyetrack, plotFig)
+function [ET, eegEvents, syncQuality] = synchronize(ET, startEndEvent, eegEvents, eegrate, n_eegsmp, doRegression, filterEyetrack, plotFig, searchRadius)
 
-if nargin < 8
+if nargin < 9
     help(mfilename)
     return;
 end
-
-%% define search radius to find matching (shared) events in ET & EEG
-% Search for RADIUS samples around each EEG event to find an ET event of 
-% the same type (e.g. '123'). Hard-coded. It might be sensible to increase 
-% the search RADIUS in case of very high sampling rates (e.g. 2000 Hz).
-RADIUS = 5;
 
 %% get start-event & end-event for synchronization
 startevent = startEndEvent(1);
@@ -53,36 +47,54 @@ endeventTime   = ET.event(ix_endevent,  1);
 eegEvents      = eegEvents(find(eegEvents(:,1) == startevent,1):find(eegEvents(:,1) == endevent,1,'last'),:);
 eegEvents(:,3) = eegEvents(:,2)-eegEvents(1,2)+1; % subtract offset
 
-% remember no. of EEG samples recorded between start-event and end-event
+%% remember no. of EEG samples recorded between start-event and end-event
 n_eegsmp_range       = eegEvents(end,2)-eegEvents(1,2)+1;
 assert(n_eegsmp_range > 0,'\n%s(): Synchronization not possible. There is a problem with your chosen synchronization events in the EEG.\nThe last instance of your end-event %i does not happen after the first instance of your start-event %i.\n',mfilename,endevent,startevent);
 
 
-%% estimate ET sampling rate
+%% estimate ET sampling rate (for user feedback/possible filtering)
+% The ET sampling rate is estimated based on the assumption that
+% the "EEG.srate" is correct, i.e. the clock of the EEG is treated as the
+% master clock.
+%
 % How many samples were recorded between start- and end-event?
 n_eyesmp_range = sum(ET.data(:,1) >= starteventTime & ET.data(:,1) <= endeventTime);
-
-% Count number of ET samples recorded and determine median 
-% inter-sample-interval. Rather than just counting samples, this takes into 
-% consideration that the ET recording may have occasionally been paused 
-% causing large forward jumps in the timestamp. Note that the ETr sampling 
-% rate is estimated based on the assumption that "EEG.srate" is correct
 ix_starteventSample = find(ET.data(:,1) == starteventTime);
 ix_endeventSample   = find(ET.data(:,1) == endeventTime);
-% get inter-sample-intervals
-et_df      = diff(ET.data(ix_starteventSample:ix_endeventSample,1));
-% divide by median inter-sample interval
-stepFactor = et_df/median(et_df);
-eyerate    = (sum(stepFactor) / n_eegsmp_range) * eegrate;
+% Bugfix, OD, 2017-02-15:
+% special case for estimating the ET sampling rate in cases, where the
+% parallel port inputs wer inserted as separate lines into the
+% ET raw data (e.g. "INPUT" lines for Eyelink trackers). These lines have
+% a timestamp that is slightly *different* from that of any data sample.
+% Therefore, we need to search for the data sample that is closest to the
+% input
+if isempty(ix_starteventSample)
+    [ix_starteventSample, dummy] = searchclosest(ET.data(:,1),starteventTime);
+end
+if isempty(ix_endeventSample)
+    [ix_endeventSample, dummy] = searchclosest(ET.data(:,1),endeventTime);
+end
+n_etsmp_range = length(ix_starteventSample:ix_endeventSample);
+eyerate = (n_etsmp_range / n_eegsmp_range) * eegrate; % estimated ET rate
+% To do for future versions:
+% Rather than just counting the ET samples to estimate the ET sampling rate,
+% we need to considerer that the ET recording may have occasionally been
+% *paused* by the user (causing large forward jumps in the ET timestamp).
+% Therefore, we could use the median (robust against occasional recording
+% pauses) interval between sucessive ET samples to estimate ET rate...
+%
+% % get median inter-sample-intervals for ET...
+% et_df = median(diff(ET.data(ix_starteventSample:ix_endeventSample,1)));
 
 %% feedback: sampling rates
-fprintf('\n\n-- %i recorded EEG samples in synchronization range',n_eegsmp_range);       
-fprintf('\n-- %i recorded ET samples in synchronization range',n_eyesmp_range); 
+fprintf('\n\n-- %i EEG samples in synchronization range',n_eegsmp_range);
+fprintf('\n-- %i ET samples in synchronization range',n_eyesmp_range);
 fprintf('\n-- %.2f Hz EEG sampling rate',eegrate);
-fprintf('\n-- %.2f Hz estimated ET sampling rate',eyerate);
+fprintf('\n-- %.2f Hz estimated ET sampling rate [*]',eyerate);
+fprintf('\n   ([*] taking EEG as master clock & assuming the ET recording was never paused)');
 if eyerate > eegrate
     fprintf('\n-- Eye track will be downsampled to match the EEG sampling rate\n');
-    fprintf('\n-- Note: the plugin does not yet implement a low-pass filter to prevent aliasing.\n');
+    fprintf('\n-- Note: the toolbox does not yet implement a low-pass filter to prevent aliasing.\n');
 else
     fprintf('\n-- Eye track will be upsampled to match the EEG sampling rate\n');
 end
@@ -95,16 +107,17 @@ end
 % endevent were transmitted to each system without signicant jitter/delay
 ET.newtime = linspace(starteventTime, endeventTime, n_eegsmp_range)';
 
-% for each existing ET event, search for closest timestamp in new time
+%% for each existing ET event, search for closest timestamp in new time
 new_ix = zeros(length(ET.event),1);
 for k = ix_startevent:ix_endevent
     new_ix(k) = searchclosest(ET.newtime,ET.event(k,1));
 end
 ET.event(:,3) = new_ix; % assign updated sample index to ET events
 
-% identify "shared" events in ET & EEG, i.e. find EEG events that have an 
-% ET event of same type no more than RADIUS samples away
-eegEventHasPartner = findmatchingevents(eegEvents,ET.event,RADIUS);
+%% identify "shared" events in ET & EEG
+% find EEG events that have an ET event of same type no more than
+% searchRadius samples away
+eegEventHasPartner = findmatchingevents(eegEvents,ET.event,searchRadius);
 
 ix_keepEEG = find(~isnan(eegEventHasPartner(:,1))); % EEG events with partner
 ix_keepET  = eegEventHasPartner(ix_keepEEG,1);      % ET events that are partners of EEG events
@@ -113,30 +126,30 @@ y = ET.event(ix_keepET,1);   % timestamp of ET events with a partner
 
 %% optional: linear regression
 if doRegression
-    
     % do linear regression based on all shared events to optimize
-    % the recorded latencies of start-event and end-event. Helps to reduce 
+    % the recorded latencies of start-event and end-event. Helps to reduce
     % error if start-event and/or end-event were transmitted with jitter.
     % Won't help in case of constant transmission delays for all events.
     
     % linear regression based on shared events
-    b  = [ones(length(x),1) x] \ y;   
-    % for plotting only
-    yhat = b(1)+b(2).*x;
+    b  = [ones(length(x),1) x] \ y;
+    yhat = b(1)+b(2).*x; % for plotting of regression line only
     % sum of squares of data residuals
     st = sum((y-mean(y)).^2);
     % sum of squares of estimate residuals
     sr = sum((y-yhat).^2);
     % coefficient of determination (R^2)
     r2 = (st-sr) / st;
+    % % root mean square error (RMSE)
+    % rmse = sqrt(sr);
     
-    % correct latency of start-/end-event using regression function
+    % correct latency of start-/end-event based on this linear model fit
     ET.event(ix_startevent,1) = round( b(1)+b(2).*eegEvents(1,2)   );
     ET.event(ix_endevent,1)   = round( b(1)+b(2).*eegEvents(end,2) );
     starteventTime = ET.event(ix_startevent,1);
     endeventTime   = ET.event(ix_endevent,1);
     
-    % repeat linspace() with "refined" latencies of start-/end-event
+    % now repeat linspace() with "refined" latencies of start-/end-event
     ET.newtime = linspace(starteventTime, endeventTime, n_eegsmp_range)';
 end
 
@@ -144,19 +157,19 @@ end
 %% linear interpolation
 if ~isempty(ET.data)
     
-    %% check for backward jumps in time
-    % Note: occasionally ET timestamps can jump backwards during
-    % continuous recording. This cannot be repaired since it remains
-    % unknown how much time did really pass during a backward jump. 
-    % Problem observed with SMI trackers & older versions of the IView X 
-    % recording software
+    %% check for backward jumps in timestamps
+    % Note: with some older eye trackers, ET timestamps can sometimes jump
+    % backwards during the recording. This cannot be repaired since it remains
+    % unknown how much time really passed during such a backward jump.
+    % This problem was observed, in particular, with SMI trackers in combination
+    % with older versions of SMI's "IView X" recording software
     assert(all(diff(ET.data(:,1)) > 0),'\n%s(): Sample time in the eye tracking data is not monotonically increasing.\nCheck for backward jumps in the timestamp column of your raw data and report this to your ET manufacturer.',mfilename);
-
+    
     %% check whether filters are installed
     if filterEyetrack
         fprintf('\nWarning: Filtering to prevent aliasing is not yet implemented.')
         fprintf('\nIt is planned for future versions.')
-    end    
+    end
     
     %% ET is downsampled --> filter to prevent aliasing
     if filterEyetrack
@@ -164,19 +177,17 @@ if ~isempty(ET.data)
         % if eegrate <= eyerate
         %   fprintf('\nET data is being low-pass filtered (IIR) to prevent aliasing...\n');
         %   ...
-        %   ...
         % end
     end
     
-    %% linear piecewise interpolation by interp1: generate new ET data
+    %% linear piecewise interpolation (using interp1): generate new ET data
     % note: minimal extrapolation may be necessary if doRegression == true
     et_new = interp1(ET.data(:,1),ET.data(:,2:end),ET.newtime,'linear','extrap');
-
+    
     %% ET is upsampled --> filter to prevent images in spectrum
     if filterEyetrack
         % if eegrate > eyerate
         %   fprintf('\nET data is being low-pass filtered (IIR) to prevent image artifacts in spectrum...\n');
-        %   ...
         %   ...
         % end
     end
@@ -187,7 +198,6 @@ else
     ET.syncdata = [];
 end
 
-
 %% update the sample index of events in the ET
 % for existing ET events, search for closest timestamp in the new time
 new_ix = zeros(length(ET.event),1);
@@ -196,8 +206,7 @@ for k = ix_startevent:ix_endevent
 end
 ET.event(:,3) = new_ix;
 
-
-%% update the sample index of imported eye movement events in ET
+%% update sample index of imported eye movement events in ET
 if isfield(ET,'eyeevent')
     
     eventTypes = fieldnames(ET.eyeevent)';
@@ -212,7 +221,7 @@ if isfield(ET,'eyeevent')
         ET.eyeevent.(eventType).eye  = ET.eyeevent.(eventType).eye(inRange,:);
         n_events = size(ET.eyeevent.(eventType).data,1);
         
-        % find corresponding sample in new ET time
+        % find corresponding sample in new ('rescaled') ET time
         new_ix   = zeros(n_events,3);
         new_time = zeros(n_events,3);
         for e = 1:2*n_events
@@ -228,39 +237,61 @@ if isfield(ET,'eyeevent')
         % store event
         ET.eyeevent.(eventType).data(:,1:3) = new_ix;
     end
+    
+    clear new_* n_events inRange
+end
+
+%% update timestamp of 'other' ET messages (new in Jan-2017, OD)
+% = all messages starting with 'MSG', which are *not* keyword messages
+% (used for synchronization) and *not* eyeevents (e.g. saccades).
+if isfield(ET,'othermessages')
+    
+    % delete messages with timestamps not within synchronizeable time range
+    NotInRange = [ET.othermessages(:).timestamp] < starteventTime | [ET.othermessages(:).timestamp] > endeventTime;
+    ET.othermessages(NotInRange) = [];
+    % go tru 'other' messages
+    for m = 1:length(ET.othermessages)
+        % find corresponding sample in new ('rescaled') ET time
+        [new_ix, new_time] = searchclosest(ET.newtime,ET.othermessages(m).timestamp);
+        new_ix             = new_ix-1 + eegEvents(1,2);
+        % add the corresponding EEG time (= sample of EEG corresponding to
+        % time that the message was send) to ET.othermessages
+        ET.othermessages(m).EEGsample = new_ix;
+    end
 end
 
 %% find matching events again to update estimate of synchronization error
-eegEventHasPartner = findmatchingevents(eegEvents,ET.event,RADIUS);
-
+eegEventHasPartner = findmatchingevents(eegEvents,ET.event,searchRadius);
 
 %% feedback: estimate sync error based on all "shared" events
-n_total     = size(eegEventHasPartner,1);
-n_nopartner = sum(isnan(eegEventHasPartner(:,2)));
-[count bin] = hist(eegEventHasPartner(:,end),-RADIUS:RADIUS);
-syncQuality = [bin;count]';
+n_total      = size(eegEventHasPartner,1);
+n_nopartner  = sum(isnan(eegEventHasPartner(:,2)));
+[count, bin] = hist(eegEventHasPartner(:,end),-searchRadius:searchRadius);
+syncQuality  = [bin;count]';
 
-
-%% feedback on synchronization quality: MATLAB console
-fprintf('\nSynchronization quality:')
+%% feedback on synch quality
+fprintf('\nShared events of same type less than +/- %i samples apart: %i',searchRadius,n_total-n_nopartner);
+fprintf('\n\nSynchronization quality:')
 if n_nopartner == 0
-    fprintf('\nFor each EEG event, an ET event of the same type was found within plusminus %i samples',RADIUS);
+    fprintf('\nFor all events in the EEG, an ET event of the same type was found within plusminus %i samples.',searchRadius);
     fprintf('\nSynch. error is the latency difference between matching ET/EEG events after synchronization.');
     fprintf('\nIt is distributed as follows:\n');
 else
-    fprintf('\nWarning: For %i of %i EEG events (%.1f%%), no ET event of same name was found within plusminus %i samples',n_nopartner,n_total,100*n_nopartner/n_total,RADIUS);
-    fprintf('\nPossibly, some events were not transmitted to the eye tracker?');
+    fprintf('\nWarning: For %i of %i EEG events (%.1f%%), no ET event of same name was found within plusminus %i samples',n_nopartner,n_total,100*n_nopartner/n_total,searchRadius);
+    fprintf('\nThis can occur, for example if some events were not transmitted to the ET (or EEG)');
+    fprintf('\nIf only a few events do not have a \"partner\" event, and sync quality for the remaining events is good, you are probably safe.');
     fprintf('\nSynch. error is the latency difference between matching ET/EEG events after synchronization.');
     fprintf('\nFor the remaining %i events, it is distributed as follows:\n',n_total-n_nopartner);
 end
 fprintf('\n%s\t%s','Error [smp]','Events');
 fprintf('\n-------------------------\n');
 disp(syncQuality);
-fprintf('-------------------------');
-fprintf('\nShared events less than +/- %i samples apart: %i\n',RADIUS,n_total-n_nopartner);
+fprintf('-------------------------\n');
+avg_abs_error = sum(abs(syncQuality(:,1)).*syncQuality(:,2)) ./ sum(syncQuality(:,2));
+fprintf('Mean abs. sync. error (estimated from \"shared\" events): %.3f ms',avg_abs_error.*1000/eegrate); % note this is *not* RMSE
+fprintf('\n-------------------------\n\n');
 
-
-%% figure with feedback on synchronizatino quality
+%% figure with feedback on synch quality
 % three subplots:
 % - event latencies visualized after synchronization (all events)
 % - scatterplot of event latencies in original time ('shared' events only)
@@ -333,35 +364,34 @@ if plotFig
     catch
         fprintf('\nSubplot legend not shown.')
     end
-        
+    
     %% scatterplot of event latencies ("shared" events only)
     subplot(2,2,3); hold on; box on;
-    title('Event latencies of shared events','fontweight','bold')
+    title('Comparison: Event latencies','fontweight','bold')
     if doRegression
         plot(x,yhat,'r-');
         plot(x,y,'k.');
-        plot(x(1),yhat(1),'ro');     % updated estimate: start-event latency
-        plot(x(end),yhat(end),'ro'); % updated estimate: end-event latency
-        l = legend('regression: ET on EEG','shared events','Location','NorthWest');
+        plot(x(1),yhat(1),'bo');     % updated estimate: start-event latency
+        plot(x(end),yhat(end),'bo'); % updated estimate: end-event latency
+        l = legend('regression line (ET on EEG)','shared events','start-/endEvent','Location','NorthWest');
         % coeff. of determination (R2)
         xl = xlim; yl = ylim;
-        text(xl(2)-0.4*(xl(2)-xl(1)),yl(2)-0.6*(yl(2)-yl(1)),sprintf('R^2: %.3f',r2),'fontsize',8);
+        text(xl(2)-0.4*(xl(2)-xl(1)),yl(2)-0.6*(yl(2)-yl(1)),sprintf('R^2 = %.3f',r2),'fontsize',10);
     else
         plot(x,y,'k.');
         l = legend('shared events','Location','NorthWest');
     end
     set(l,'box','off','fontsize',8);
-    xlabel('EEG latency (samples)')
-    ylabel('Original ET latency (samples or time)')
-    
+    xlabel('EEG latency (in samples)')
+    ylabel('Original ET latency (timestamp)')
     
     %% histogram of synchronization error (based on "shared" events only)
     % error = sample dist. between EEG and ET events after interpolation
     subplot(2,2,4); hold on; box on;
     title('Quality of synchronization','fontweight','bold')
     bar(bin,count,'k')
-    set(gca,'xTick',-RADIUS:1:RADIUS);
-    xlim([-RADIUS-0.5 RADIUS+0.5])
-    xlabel('Offset between shared events (samples)')
+    set(gca,'xTick',-searchRadius:1:searchRadius);
+    xlim([-searchRadius-0.5 searchRadius+0.5])
+    xlabel('Time diff. between shared events (in samples)')
     ylabel('Number of events')
 end

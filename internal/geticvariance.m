@@ -97,6 +97,7 @@ if ~isempty(ix_sac) && ~isempty(ix_fix)
         % define samples belonging to saccade (with tolerance)
         lowr = saclat(ns) - tolerance(1);
         uppr = saclat(ns) + round(sacdur(ns))-1 + tolerance(2);
+       
         if lowr <= 0, lowr = 1; end
         if uppr > size(icaact,2), uppr = size(icaact,2); end
         

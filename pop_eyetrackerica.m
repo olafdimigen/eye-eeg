@@ -20,8 +20,8 @@
 %  sactol     - [vector of two integers], e.g. [5 10]. 
 %               Extra temporal tolerance around saccade onset and offset.
 %               Saccade intervals will range from saccade-onset minus 
-%               window(1) samples until saccade-offset plus window(2) 
-%               samples. Correspondingly, the tolerance will be substracted
+%               window(1) SAMPLES until saccade-offset plus window(2) 
+%               SAMPLES. Correspondingly, the tolerance will be substracted
 %               from the fixation intervals.
 %  threshratio- critical variance ratio threshold for component rejection.
 %               If the variance of IC activity within saccades is more than
@@ -68,20 +68,32 @@
 %
 % Example: A call of the function might look like this:
 %
-% >> [EEG vartable] = pop_eyetrackerica(EEG,'saccade','fixation',[10 5],1.1,3,1,1)
+% >> [EEG vartable] = pop_eyetrackerica(EEG,'saccade','fixation',[5 0],1.1,3,1,1)
 %
 % Explanation: compute the variance of the activity time course of each IC
 % within saccade events (of type 'saccade' in EEG.event) and fixation
 % events (of type 'fixation' in EEG.event). For this analysis, saccade 
-% intervals are defined as lasting from 10 samples before fixation onset 
-% until 5 samples after saccade offset [sactol]. Conversely, variance for
-% fixation intervals is computed from 5 samples after fixation onset until 
-% 10 samples before fixation offset. If the variance ratio 
+% intervals are defined as lasting from 5 samples before fixation onset 
+% until 0 samples after saccade offset [sactol]. Conversely, variance for
+% fixation intervals is computed from 0 samples after fixation onset until 
+% 5 samples before fixation offset. If the variance ratio 
 % [var(sac)/var(fix)] for a component is larger than 1.1, set this 
 % component to "reject". Overwrite existing rejection flags already present
 % in EEG.reject.gcompreject. Show an extra figure to evaluate the setting
 % for the threshold (maxcrit). Plot 2D topographies of components flagged
 % as good and bad.
+%
+% WARNING: Do not use this function on resampled EEG data.
+% This function requires the information about the duration of
+% saccades and fixations from EEG.event.duration. If you have RESAMPLED
+% your EEG file (pop_resample) after eye movement events were inserted, 
+% the duration of these events will not be correct anymore, since EEGLAB's 
+% pop_resample function does not update the EEG.event.duration fields. 
+% So the outputs of the current function may be incorrect for resampled 
+% EEG data. In other words, be careful with this function if you have
+% changed the sampling rate of your EEG data (thanks to 
+% C. Huber-Huber for this bug report).
+%
 %
 % The saccade/fixation "variance ratio" criterion was proposed by:
 %
@@ -91,8 +103,8 @@
 % Neuroscience, doi: 10.3389/fnhum.2012.00278.
 %
 % Author: od
-% Copyright (C) 2009-2013 Olaf Dimigen & Ulrich Reinacher, HU Berlin
-% olaf.dimigen@hu-berlin.de / ulrich.reinacher.1@hu-berlin.de
+% Copyright (C) 2009-2017 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -108,7 +120,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, 51 Franklin Street, Boston, MA 02110-1301, USA
 
-function [EEG, com] = pop_eyetrackerica(EEG,sacstring,fixstring,sactolerance,threshratio,flagmode,plotfig,topomode)
+function [EEG, vartable, com] = pop_eyetrackerica(EEG,sacstring,fixstring,sactolerance,threshratio,flagmode,plotfig,topomode)
 
 com = '';
 
@@ -129,7 +141,7 @@ try
         [sacstring,fixstring,sactolerance,threshratio,flagmode,plotfig,topomode] = dlg_eyetrackerica(mfilename,EEG);       
     end
     
-    EEG = eyetrackerica(EEG,sacstring,fixstring,sactolerance,threshratio,flagmode,plotfig,topomode);
+    [EEG, vartable] = eyetrackerica(EEG,sacstring,fixstring,sactolerance,threshratio,flagmode,plotfig,topomode);
     
 catch err
     if (strcmp(err.identifier,'MATLAB:unassignedOutputs'))
@@ -142,4 +154,5 @@ end
 % return history command string
 allArgs = vararg2str({sacstring,fixstring,sactolerance,threshratio,flagmode,plotfig,topomode});
 com = sprintf('[EEG vartable] = %s(EEG,%s)',mfilename,allArgs);
+
 return

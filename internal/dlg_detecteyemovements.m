@@ -2,8 +2,8 @@
 %                parameter, called by pop_detecteyemovements()
 %                for help, type >> help pop_detecteyemovements
 %
-% Copyright (C) 2009-2013 Olaf Dimigen & Ulrich Reinacher, HU Berlin
-% olaf.dimigen@hu-berlin.de / ulrich.reinacher.1@hu-berlin.de
+% Copyright (C) 2009-2017 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ cb_calcVisAngle = ['visangle = dlg_calcvisangle(''',callingFcn,''');' ...
     ];
 
 %% strings for pulldown menu (saccade clustering methods, see mergesacc())
-clustermethods = {'1. keep all saccades'; '2. keep first saccade'; '3. keep largest saccade'; '4. combine into one saccade'};
+clustermethods = {'1. keep all saccades'; '2. keep first saccade'; '3. keep largest saccade (Beta)'; '4. combine into one saccade (Beta)'};
 
 %% main menu
 uilist = {...
@@ -131,7 +131,11 @@ smooth       = outstruct.smoothdata;
 globalthresh = outstruct.globalthresh;
 clusterdist  = round(str2num(outstruct.clusterdist_ms)/(1000/srate));
 clustermode  = outstruct.clustermode;
-degperpix    = str2double(outstruct.dpp);
+if ~isempty(outstruct.dpp) % ''
+    degperpix  = str2double(outstruct.dpp);
+else
+    degperpix = []; % convert '' to []
+end
 writesac     = outstruct.writesac;
 writefix     = outstruct.writefix;
 plotfig      = outstruct.plotfig;
