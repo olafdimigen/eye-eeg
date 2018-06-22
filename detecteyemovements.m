@@ -85,6 +85,11 @@
 %           mergesacc, addevents
 %
 %
+% MAJOR UPDATE 03/2018: bad ET intervals, as marked by "bad_ET" events
+% in EEG.event (see function pop_rej_contin.m) are excluded from eye movement 
+% detection. Bad intervals are now ignored when estimating velocity thresholds
+% and saccade/fixation events overlapping with these intervals are removed
+%
 % An example call of the function might look like this: 
 % >> EEG = detecteyemovements(EEG,[],[33 34],6,4,0.037,1,0,25,4,1,1,0)
 %
@@ -113,7 +118,7 @@
 % low retinal image slip, PNAS, Vol. 103 (18), 7192-7197
 %
 % Author: od
-% Copyright (C) 2009-2017 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% Copyright (C) 2009-2018 Olaf Dimigen, HU Berlin
 % olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify
@@ -235,16 +240,43 @@ else
     end
 end
 
+%% get "bad_ET" intervals from EEG.event structure
+badvector = zeros(1,size(EEG.data,2)*size(EEG.data,3));
+ix_badETevent = ismember({EEG.event.type},'bad_ET');
+if ~isempty(ix_badETevent)
+    bad_lat     = [EEG.event(ix_badETevent).latency];
+    bad_dur     = [EEG.event(ix_badETevent).duration];
+    bad_ET      = [bad_lat; bad_dur]';
+    bad_ET(:,3) = bad_ET(:,1)+bad_ET(:,2)-1;
+    
+    % create long vector (as long as EEG) indicating bad samples
+    for j = 1:size(bad_ET,1)
+        badvector(bad_ET(j,1):bad_ET(j,3)) = 1;
+    end
+end
+% reshape "badvector" to 3D if data is already epoched
+badvector = reshape(badvector,1,size(EEG.data,2),size(EEG.data,3));
+
+
 
 %% pre-compute saccade velocity thresholds for all epochs
+% this enables the option to use the same threshold for all epochs, not
+% provided by the original Engbert & Mergenthaler implementation
+% new 03/2018: exclude bad ET intervals from velocity estimation
+fprintf('\nComputing adaptive velocity thresholds...')
+% if any(badvector(:))
+%     fprintf('\n-- Found %i \"bad_ET\" events marking bad eye-tracking intervals in EEG.event.',length(ix_badETevent))
+%     fprintf('\n-- These intervals (%.2f%% of data) will be ignored when computing velocity thresholds.',(sum(badvector)/length(badvector(:))*100))
+% end
 for e=1:nepochs
+    ix_goodET = ~badvector(:,:,e); % get index of non-bad ET samples
     if ldata
-        l = EEG.data([left_eye_xy(1) left_eye_xy(2)],:,e)';
+        l = EEG.data([left_eye_xy(1) left_eye_xy(2)],ix_goodET,e)';
         vl = vecvel(l,EEG.srate,smoothlevel);
         [l_msdx(e), l_msdy(e)] = velthresh(vl);
     end
     if rdata
-        r = EEG.data([right_eye_xy(1) right_eye_xy(2)],:,e)';
+        r = EEG.data([right_eye_xy(1) right_eye_xy(2)],ix_goodET,e)';
         vr = vecvel(r,EEG.srate,smoothlevel);
         [r_msdx(e), r_msdy(e)] = velthresh(vr);
     end
@@ -257,7 +289,7 @@ for e=1:nepochs
     %% saccades of left eye
     sac = [];
     if ldata
-        l = EEG.data([left_eye_xy(1) left_eye_xy(2)],:,e)';
+        l = EEG.data([left_eye_xy(1) left_eye_xy(2)],:,e)'; % don't exclude bad_ET samples here (otherwise discont. high-velocity jumps in time series)
         % bad/missing samples in eye track?
         badsmp = sum(sum(l<=0)); if badsmp > 0, badepochs(e) = 1; nbadsmp = nbadsmp + badsmp; end
         vl = vecvel(l,EEG.srate,smoothlevel); % get eye velocities
@@ -350,8 +382,37 @@ for e=1:nepochs
     %11: horizontal (x) gaze position before start of saccade (pixel)
     %12: vertial (y) gaze position before start of saccade (pixel)
     %13: horizontal (x) gaze position after end of saccade (pixel)
-    %14: vertial (y) gaze position after end of saccade (pixel)
+    %14: vertical (y) gaze position after end of saccade (pixel)
     
+    
+    %% remove saccades that occured during "bad_ET" intervals [*]
+    % Delete all saccades whos onset or offset occurs during a 
+    % bad_ET interval (signal jumps to blinks are otherwise detected as 
+    % saccades)
+    %
+    % [*] Note: It is not clear/trivial how to treat blinks in the context 
+    % of EM detection, since we do not know what really happened during a
+    % blink or loss of the signal. For example, is a long fixation with a 
+    % blink in the middle really two fixations? Or should it be treated as 
+    % one long fixation? Or should all fixations that are ended or started 
+    % by blinks or are interrupted by them be completely removed?
+    % The solution here is preliminary: I first remove all saccades that 
+    % started or ended during a blink interval. The remaining saccades are 
+    % used to define fixatinos. Finally, all fixations are removed that 
+    % overlap with "bad_ET" intervals in EEG.event. So this approach 
+    % removes any eye movement event that overlaps with a bad_ET interval. 
+    % OD, 2018-03-08
+        
+    %% delete saccades starting/ending during "bad_ET" intervals
+    badETsmp = find(badvector(:,:,e));
+    if ~isempty(sac)
+        ix_fakesac = find(ismember(sac(:,1),badETsmp) | ismember(sac(:,2),badETsmp));
+        sac(ix_fakesac,:) = [];
+    %         if ~isempty(ix_fakesac)
+    %             fprintf('\n\n-- Removed %i saccades that occured during "bad_ET" intervals',length(ix_fakesac))
+    %         end
+    end
+       
     %% get fixations
     nsac = size(sac,1);
     fix = [];
@@ -432,7 +493,27 @@ for e=1:nepochs
     % 8: mean fix position (L/R average X)
     % 9: mean fix position (L/R average Y)
     %10: index of corresponding data epoch (1 in case of contin. data)
+    
+    %% remove fixations overlapping with "bad_ET" intervals
+    % this includes fixations interrupted by a blink (!)
+    % development note: loop is slow, need to implement more efficiently
+    if ~isempty(fix) & any(badvector(:))
+        badfix = false(size(fix,1),1); % preallocate logical
         
+        % go tru fixations, check whether "bad"
+        for p = 1:size(fix,1)
+            fixsmp = fix(p,1):fix(p,2);
+            if any(ismember(fixsmp,badETsmp))
+                badfix(p) = true;
+            end
+        end
+        % remove fixations overlapping with "bad_ET" intervals
+        fix(badfix,:) = [];
+        %         if any(badfix)
+        %             fprintf('\n-- Removed %i fixations that overlapped with "bad_ET" intervals',sum(badfix))
+        %         end
+    end
+      
     % slow, but simple:
     allsac = [allsac;sac];
     allfix = [allfix;fix];
@@ -443,7 +524,7 @@ end % epoch loop
 %% remove artificial eye movements caused by boundaries (data breaks)
 % Remove all EMs whose onset is detected in temporal proximity to boundary. 
 % Otherwise, data breaks will likely result in additional fake sacc./fix.
-% Applies only if eye movements are detected in continuous data.
+% Applies only if eye movements are detected in the continuous data
 if nepochs == 1
 
     ix_bnd = find(cellfun(@(x) strcmp(x,'boundary'),{EEG.event.type})); % bug fix: now robust against numeric types
@@ -484,7 +565,6 @@ if nepochs == 1
         fprintf('\nRemoving eye movements that might be artifacts of data breaks:');
         fprintf('\nRemoved %i saccades  < %i ms away from a boundary',length(fakesac),BOUNDDIST_MS);
         fprintf('\nRemoved %i fixations < %i ms away from a boundary',length(fakefix),BOUNDDIST_MS);
-        % future versions: ix_bad = find(ismember({EEG.event.type},'badeye'));
     end
 end
 
@@ -495,20 +575,23 @@ if clusterwarning && clustermode == 1
 end
 
 
-%% user feedback: are there "bad" epochs containing values <= 0?
-if sum(badepochs)>0
-    fprintf('\n--------------------------------------------------------------------');
-    fprintf('\n*** WARNING! ***\n%i of %i epochs contained gaze position values <= 0',sum(badepochs),nepochs);
-    fprintf('\n-- Total number of samples <= 0: %i',nbadsmp);
-    fprintf('\n-- Did you reject data with out-of-range values (''Reject data based on eyetrack'')?');
+%% user feedback if bad eye-tracking data (values <= 0) but no bad_ET events
+if sum(badepochs)>0 & isempty(ix_badETevent)
+    warning('\nI found bad or missing data (i.e. values <= 0) in the ET channels but no \"bad_ET" events!');
+    fprintf('\nDetails:'); 
+    fprintf('\n-- %i of %i epochs contained gaze position values <= 0',sum(badepochs),nepochs);
+    fprintf('\n-- Total number of bad samples <= 0: %i',nbadsmp);
+    fprintf('\n-- Did you detect or reject bad intervals with out-of-range values (''Reject data based on eyetrack'')?');
     fprintf('\n-- Did you subtract a baseline from eye channels (explaining negative values)?');
-    fprintf('\n-- Note: any blinks/bad data will be erroneously detected as saccades/fixations!');
+    fprintf('\n-- Note that unmarked blinks or missing data in the eye-track will...:')
+    fprintf('\n    ...distort the velocity threshold for saccade detection!');
+    fprintf('\n    ...be erroneously detected as additional saccades/fixations!');
 end
 
 
 %% user feedback: saccade & fixation detection
 fprintf('\n--------------------------------------------------------------------');
-fprintf('\nVelocity thresholds used'); if nepochs > 1, fprintf(' (mean across epochs):'); end;
+fprintf('\nVelocity thresholds used:'); if nepochs > 1, fprintf(' (mean across epochs):'); end;
 if ldata, fprintf('\n\tLeft eye.  Horiz.: %.2f %s/s. Vert.: %.2f %s/s',mean(l_msdx(e)*vfac*degperpixel),metric,mean(l_msdy*vfac*degperpixel),metric); end
 if rdata, fprintf('\n\tRight eye. Horiz.: %.2f %s/s. Vert.: %.2f %s/s',mean(r_msdx(e)*vfac*degperpixel),metric,mean(r_msdy*vfac*degperpixel),metric); end
 fprintf('\n--------------------------------------------------------------------')
@@ -551,7 +634,7 @@ if writefix || writesac
     if any(cellfun(@(x) any(strcmp(x,em_types)),{EEG.event.type})) % updated [v.0.337]
         fprintf('\n--------------------------------------------------------------------')
         fprintf('\n*** WARNING! ***:\nFound existing eye movement events in EEG.event!');
-        fprintf('\nNew events will be added to already existing events.');
+        fprintf('\nNew events will be added to the already existing events!');
     end
     
     % write saccades

@@ -26,14 +26,16 @@ if msdx<realmin
     msdx = sqrt( mean(vel(:,1).^2) - (mean(vel(:,1)))^2 );
     if msdx<realmin
         %error('msdx<realmin in microsacc.m');
-        error('msdx<realmin in vecthresh.m. Did you exclude blinks/missing data before saccade detection?'); % // added by O.D.
+        warning('msdx<realmin in vecthresh.m. Zeros or negative values found. Did you exclude or mark blinks/missing data before saccade detection?'); % // added by O.D.
+        msdx = inf; % added by OD
     end
 end
 if msdy<realmin
     msdy = sqrt( mean(vel(:,2).^2) - (mean(vel(:,2)))^2 );
     if msdy<realmin
         %error('msdy<realmin in microsacc.m');
-        error('msdy<realmin in vecthresh.m. Did you exclude blinks/missing data before saccade detection?'); % // added by O.D.
+        warning('msdy<realmin in vecthresh.m. Zeros or negative values found. Did you exclude or mark blinks/missing data before saccade detection?'); % // added by O.D.
+        msdx = inf; % added by OD
     end
 end
 

@@ -38,7 +38,7 @@
 % epoched data (and if the epoch does not start with a saccade)
 %
 % Author: od
-% Copyright (C) 2009-2017 Olaf Dimigen, HU Berlin
+% Copyright (C) 2009-2018 Olaf Dimigen, HU Berlin
 % olaf.dimigen@hu-berlin.de
 
 % This program is free software; you can redistribute it and/or modify

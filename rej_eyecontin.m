@@ -6,62 +6,64 @@
 %                fixation detection.
 %
 %                There are two possibilities:
-%                METHOD 1: reject bad intervals and insert boundary events 
-%                (=data breaks) at that position. This actually removes the 
+%                METHOD 1: reject bad intervals and insert boundary events
+%                (=data breaks) at that position. This actually removes the
 %                intervals with bad data from the dataset.
 %                EEGLAB function pop_select() is used to do the actual
 %                rejection. A new boundary event is added at the position
 %                of each of the resulting data breaks. To perform a similar
 %                rejection for epoched data, use pop_rej_eyeepoch.
 %
-%                METHOD 2: just detect bad intervals in the eye tracking data,
-%                but keep the actual data intervals. Instead, information 
-%                about the start and endpoints of bad intervals is stored 
-%                in the field EEG.etc.eyetracker_badintervals. These bad
-%                intervals will not be ignored by the saccade detection
-%                algorithm (function pop_detecteyemovmenents).
+%                METHOD 2: detect bad intervals in the eye tracking data,
+%                and insert a "bad_ET" marker in the EEG.event structure for
+%                every bad interval. These events will be considered by 
+%                pop_detecteyemovements(), so that the bad ET data will not
+%                distort the detection of saccades and fixations
 %
 % Usage:
-%   >> EEG = rej_eyecontin(EEG,chns,minvals,maxvals,windowsize,method)
+%   >> EEG = rej_eyecontin(EEG,chns,minvals,maxvals,windowsize,rejectionmethod)
 %
 % Inputs:
 %   EEG          - [string] EEG struct, also containing synchronized eye
 %                  tracking data
-%   chns         - [vector of channel indices] Indices of ET channels to 
+%   chns         - [vector of channel indices] Indices of ET channels to
 %                  check for out-of-range values
 %   minvals      - [vector of length(chns)] minimum allowed values for the
 %                  corresponding data channel in 'chns'. Data points
 %                  with values < minvals will be rejected. minvals needs to
-%                  have the same length as chns and maxvals. If you only 
+%                  have the same length as chns and maxvals. If you only
 %                  want to test for maxvals, minvals can be left empty [].
 %   maxvals      - [vector of length(chns)] maximum allowed values for the
 %                  corresponding data channel in 'chns'. Data points with
 %                  with values > maxvals will be rejected. maxvals needs to
-%                  have the same length as chns and minvals.  If you only 
+%                  have the same length as chns and minvals.  If you only
 %                  want to test for minvals, maxvals can be left empty [].
-%   windowsize   - [integer] if windowsize is set to a value > 0, an 
-%                  additional plusminus 'windowsize' data points will be 
-%                  removed before and after each interval of out-of-range 
-%                  data. We recommended to set this to a reasonable value 
-%                  (e.g., 50 samples in case of 500 Hz data) because eye 
-%                  blinks (usually characterized by zeros or negative 
-%                  values in the eye track) are often flanked by 
-%                  additional bad samples (recorded during 
-%                  the partial occlusion of the pupil while the eye is 
-%                  closing and re-opening) that may otherwise not exceed 
+%   windowsize   - [integer] if windowsize is set to a value > 0, an
+%                  additional plusminus 'windowsize' data points will be
+%                  removed before and after each interval of out-of-range
+%                  data. We recommended to set this to a reasonable value
+%                  (e.g., 50 samples in case of 500 Hz data) because eye
+%                  blinks (usually characterized by zeros or negative
+%                  values in the eye track) are often flanked by
+%                  additional bad samples (recorded during
+%                  the partial occlusion of the pupil while the eye is
+%                  closing and re-opening) that may otherwise not exceed
 %                  the minvals/maxvals thresholds.
-%   method      -  [1 or 2] rejection method. 
-%                  1: reject bad data intervals.
-%                  2: store bad intervals in EEG.etc.eyetracker_badintervals
-%                  but keep them in the data    
+%   rejectionnmethod  -  [1 or 2]
+%                  1: reject bad data intervals (cuts intervals from data!)
+%                     and inserts boundary events at the breaks
+%                  2: add special marker "bad_ET" to EEG.event for each bad 
+%                     data interval. These markers are considered by the
+%                     eye movement detection function (pop_detecteyemovements.m)
+%                     The dataset is not cut.
 %
 % Outputs:
-%   EEG         - EEG structure with bad intervals removed or detected. 
-%                 For each removed interval of bad data, a new boundary 
+%   EEG         - EEG structure with bad intervals removed or detected.
+%                 For each removed interval of bad data, a new boundary
 %                 event is inserted into EEG.event.
 %
 %   An example call of the function might look like this:
-%   >> EEG = rej_eyecontin(EEG,[33 34],[1 1],[1024 768],50, 1)
+%   >> EEG = rej_eyecontin(EEG,[33 34],[1 1],[1024 768],50, 2)
 %
 %   In this example, the data of channels 33 and 34, containing the
 %   horizontal (33) and vertical (34) position of the left eye, are tested
@@ -71,14 +73,15 @@
 %   pixel. Values outside this range likely reflect eye blinks
 %   or intervals during which the eye was not properly tracked. Around each
 %   interval of out-of-range data an addtional plusminus 50 samples of
-%   data are rejected as well. This is useful to exclude bad data samples
-%   at the beginning and end of eye blinks.
+%   data are marked as well. For each interval of bad data, a "bad_ET"
+%   event is added to EEG.event. These bad intervals will not be considered 
+%   by the saccade detection algorithm (pop_detecteyemovements.m)
 %
 % See also: pop_rej_eyecontin, pop_rej_eyeepoch, pop_select
 %
 % Author: od
-% Copyright (C) 2009-2017 Olaf Dimigen & Ulrich Reinacher, HU Berlin
-% olaf.dimigen@hu-berlin.de 
+% Copyright (C) 2009-2018 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% olaf.dimigen@hu-berlin.de
 
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
@@ -94,7 +97,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, 51 Franklin Street, Boston, MA 02110-1301, USA
 
-function [EEG,seq_bad] = rej_eyecontin(EEG,chns,minvals,maxvals,windowsize)
+function [EEG,seq_bad] = rej_eyecontin(EEG,chns,minvals,maxvals,windowsize,rejectionmethod)
 
 
 %% input checks
@@ -144,7 +147,7 @@ end
 
 %% bad samples found?
 if isempty(ix_bad)
-    fprintf('\n\nNo out-of-range samples found.\n')   
+    fprintf('\n\nNo out-of-range samples found.\n')
 else
     % identify start and end indices of contiguous blocks of bad data
     seq_bad = findsequence2(ix_bad');
@@ -170,18 +173,21 @@ else
     fprintf('\n\nFound %i out-of-range samples in %i continuous intervals of bad data',length(ix_bad),size(seq_bad,1));
     
     % reject bad data
-    rejectionmethod = 1;
     switch rejectionmethod
-                
+        
         case 1 % remove using pop_select
             fprintf('\nRemoving bad intervals from continuous data...\n\n')
             EEG = pop_select(EEG,'nopoint',seq_bad(:,1:2));
             
-        case 2 % alternative in future versions of toolbox
-            % do not remove data, but introduce new badeye event
-            % - create 'badeye' event in EEG.event
-            % - data is kept, but no saccades and fixations will be 
-            %   detected during 'badeye' intervals
+        case 2 % add "bad_ET" marker for each bad interval
+
+            % Update march 2018 (OD)
+            % Do not remove data, but introduce new bad_ET events in EEG.event
+            fprintf('\nAdding %i bad_ET markers to the EEG.event structure...\nNot removing any data.\n\n',size(seq_bad,1))
+            % add duration of bad interval (in samples)
+            seq_bad(:,3) = seq_bad(:,2)-seq_bad(:,1) + 1;
+            % add bad ET markers
+            EEG = addevents(EEG,[seq_bad(:,1) seq_bad(:,3)],{'latency','duration'},'bad_ET');
             
         otherwise
             error('%s(): rejection method input not recognized',mfilename)

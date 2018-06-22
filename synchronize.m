@@ -6,7 +6,7 @@
 %                   n_eegsmp, doRegression, filterEyetrack, plotFig)
 %
 % Authors: ur & od
-% Copyright (C) 2009-2017 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% Copyright (C) 2009-2018 Olaf Dimigen & Ulrich Reinacher, HU Berlin
 % olaf.dimigen@hu-berlin.de
 
 % This program is free software; you can redistribute it and/or modify
@@ -69,10 +69,12 @@ ix_endeventSample   = find(ET.data(:,1) == endeventTime);
 % Therefore, we need to search for the data sample that is closest to the
 % input
 if isempty(ix_starteventSample)
-    [ix_starteventSample, dummy] = searchclosest(ET.data(:,1),starteventTime);
+    %[ix_starteventSample, dummy] = searchclosest(ET.data(:,1),starteventTime);
+    [ix_starteventSample] = nearestpoint(starteventTime,ET.data(:,1));
 end
 if isempty(ix_endeventSample)
-    [ix_endeventSample, dummy] = searchclosest(ET.data(:,1),endeventTime);
+    %[ix_endeventSample, dummy] = searchclosest(ET.data(:,1),endeventTime);
+    [ix_endeventSample] = nearestpoint(endeventTime,ET.data(:,1));
 end
 n_etsmp_range = length(ix_starteventSample:ix_endeventSample);
 eyerate = (n_etsmp_range / n_eegsmp_range) * eegrate; % estimated ET rate
@@ -108,10 +110,12 @@ end
 ET.newtime = linspace(starteventTime, endeventTime, n_eegsmp_range)';
 
 %% for each existing ET event, search for closest timestamp in new time
-new_ix = zeros(length(ET.event),1);
-for k = ix_startevent:ix_endevent
-    new_ix(k) = searchclosest(ET.newtime,ET.event(k,1));
-end
+% new_ix = zeros(length(ET.event),1);
+% for k = ix_startevent:ix_endevent
+%     new_ix(k) = searchclosest(ET.newtime,ET.event(k,1));
+% end
+new_ix = nearestpoint(ET.event(ix_startevent:ix_endevent,1),ET.newtime);
+
 ET.event(:,3) = new_ix; % assign updated sample index to ET events
 
 %% identify "shared" events in ET & EEG
@@ -165,6 +169,45 @@ if ~isempty(ET.data)
     % with older versions of SMI's "IView X" recording software
     assert(all(diff(ET.data(:,1)) > 0),'\n%s(): Sample time in the eye tracking data is not monotonically increasing.\nCheck for backward jumps in the timestamp column of your raw data and report this to your ET manufacturer.',mfilename);
     
+    %% HANDLE RECORDING PAUSES IN EYE-TRACKING DATA 
+    % If the ET recording was paused (generally not recommended) there will 
+    % be jumps in the timestamp. During the linear interpolation (see below) 
+    % the ET signal during these gaps will be also be linearly interpolated 
+    % (i.e. there will be a linear trend between the last sample before and 
+    % first sample after the pause. This is not helpful, because these 
+    % intervals will not be easily detected as missing data (e.g. by saccade
+    % detection algorithm or by rej_eyecontin.m), because they contain 
+    % plausible non-zero values. 
+    % This next step therefore detects jumps in the ET time stamp and sets 
+    % the two samples adjacent to the recording pause to zero, so the pause 
+    % will just contain zeros, event after interpolation and will be easyly
+    % OD, 20180509
+    %
+    % Note: the threshold vor a "pause" was arbitraily set to the duration
+    % of three median inter-sample intervals. If your eye-tracker produces
+    % larger irregularites in the time stamps even without a pause, this 
+    % values would need to be set higher
+    SET_REC_PAUSES_TO_ZERO = true;
+    PAUSE_THRESHOLD        = 3; % jump of 3 median inter-sample-intervals
+    
+    if SET_REC_PAUSES_TO_ZERO
+                
+        d               = diff(ET.data(:,1));
+        ix_StartOfPause = find(d > PAUSE_THRESHOLD * median(d)); % find beginning of pauses
+        % set first sample before pause and last sample after pause to zero
+        zerosamplesA = ix_StartOfPause;   % start of pause
+        zerosamplesB = ix_StartOfPause+1; % end of pause
+        ET.data(unique([zerosamplesA zerosamplesB]), 2:end) = 0;
+        
+        % give feedback
+        if ~isempty(ix_StartOfPause)
+            fprintf('\n\n%s(): I detected %i PAUSES in the eye-tracking recording!',mfilename,length(ix_StartOfPause))
+            fprintf('\nPauses were defined as jumps in the ET time stamp > %i samples',PAUSE_THRESHOLD)
+            fprintf('\nThe last data sample before and first sample after each pause')
+            fprintf('\nwill be set to zero to avoid interpolation artifacts during the pause!\n')
+        end
+    end
+    
     %% check whether filters are installed
     if filterEyetrack
         fprintf('\nWarning: Filtering to prevent aliasing is not yet implemented.')
@@ -180,7 +223,8 @@ if ~isempty(ET.data)
         % end
     end
     
-    %% linear piecewise interpolation (using interp1): generate new ET data
+    
+    %% Linear piecewise interpolation (using interp1): generate new ET data
     % note: minimal extrapolation may be necessary if doRegression == true
     et_new = interp1(ET.data(:,1),ET.data(:,2:end),ET.newtime,'linear','extrap');
     

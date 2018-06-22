@@ -10,11 +10,11 @@
 %   oculomotor research, or computing fixation-related potentials (FRPs).
 %
 %   EYE-EEG was developed by Olaf Dimigen and Ulrich Reinacher at 
-%   Humboldt University at Berlin, Germany, 2009-2017
+%   Humboldt University at Berlin, Germany, 2009-2018
 %
 %   >> web: http://www2.hu-berlin.de/eyetracking-eeg
 %
-%   Copyright (C): Olaf Dimigen & Ulrich Reinacher, 2009-2017
+%   Copyright (C): Olaf Dimigen with Ulrich Reinacher, 2009-2018
 %   User feedback welcome: email: olaf.dimigen@hu-berlin.de
 %
 %   Project made possible by a grant from Deutsche Forschungsgemeinschaft
@@ -52,7 +52,6 @@
 %   <a href="matlab:helpwin pop_applytochannels">pop_applytochannels</a>    - apply EEGLAB functions to selected channels
 %   <a href="matlab:helpwin pop_detecteyemovements">pop_detecteyemovements</a> - detect saccades and fixations
 %   <a href="matlab:helpwin pop_ploteyemovements">pop_ploteyemovements</a>   - plot properties of saccades and fixations
-%   <a href="matlab:helpwin pop_eyetrackerica">pop_eyetrackerica</a>      - identify ICs that covary with eye tracker
 %   <a href="matlab:helpwin pop_importeyetracker">pop_importeyetracker</a>   - import & synchronized eye tracking data
 %   <a href="matlab:helpwin pop_parseeyelink">pop_parseeyelink</a>       - preprocess eye tracking data from SR Research
 %   <a href="matlab:helpwin pop_parsesmi">pop_parsesmi</a>           - preprocess eye tracking data from Sensomot. Instr.
@@ -61,6 +60,8 @@
 %   <a href="matlab:helpwin pop_rej_eyeepochs">pop_rej_eyeepochs</a>      - reject epochs with out-of-range eye track
 %   <a href="matlab:helpwin pop_checksync">pop_checksync</a>      - assess quality of ET/EEG synchronization via cross-correlation
 %   <a href="matlab:helpwin pop_ploteventrate">pop_ploteventrate</a>      - plot rate of saccades or fixations relative to the epoch time-locking event
+%   <a href="matlab:helpwin pop_overweightevents">pop_overweightevents</a>   - create optimized dataset for training the ICA
+%   <a href="matlab:helpwin pop_eyetrackerica">pop_eyetrackerica</a>      - identify ICs that covary with eye tracker
 
 %   Non-GUI functions
 %   ----------------------------------------------------
@@ -80,7 +81,8 @@
 %   <a href="matlab:helpwin ploteyemovements">ploteyemovements</a>       - plot properties of saccades & fixations
 %   <a href="matlab:helpwin synchronize">synchronize</a>            - synchronize ET/EEG data
 %   <a href="matlab:helpwin checksync">checksync</a>                - assess quality of ET/EEG synchronization via cross-correlation
-%
+%   <a href="matlab:helpwin overweightevents">overweightevents</a>   - create optimized dataset for training the ICA
+
 %   Non-GUI functions for saccade & fixation detection
 %   ----------------------------------------------------
 %   <a href="matlab:helpwin vecvel">vecvel</a>                 - compute eye velocities (*)
@@ -138,7 +140,7 @@
 
 function vers = eegplugin_eye_eeg(fig,try_strings,catch_strings)
 
-vers = 'eye_eeg_v0.80';
+vers = 'eye_eeg_v0.85';
 
 % add subfolder for dialogues and other helpers
 addpath(fullfile(fileparts(which(mfilename)),'internal'));
@@ -182,6 +184,11 @@ cb_plotem_1         = [try_strings.no_check,  '[EEG LASTCOM] = pop_ploteyemoveme
 % PLOT SACCADES & FIXATIONS
 cb_plotrate         = [try_strings.no_check,  '[LASTCOM]     = pop_ploteventrate(EEG);', catch_strings.add_to_hist];
 
+% CREATE OPTIMIZED ICA TRAINING DATA (OPTICAT)
+% cb_overweight       = [try_strings.no_check,  '[EEG_overweighted LASTCOM] = pop_overweightevents(EEG);', catch_strings.add_to_hist];
+cb_overweight       = [try_strings.no_check,  'EEG_overweighted = pop_eegfiltnew(EEG); [EEG_overweighted LASTCOM] = pop_overweightevents(EEG); [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG_overweighted, size(ALLEEG,2),''setname'',''Overweighted training data'',''gui'',''off''); eeglab redraw;', catch_strings.add_to_hist];
+
+
 % EYETRACKER-SUPPORTED ICA
 cb_etICA            = [try_strings.check_ica, '[EEG vartable LASTCOM] = pop_eyetrackerica(EEG);', catch_strings.add_to_hist];
 
@@ -215,9 +222,6 @@ uimenu( parseEyetracker_m, 'Label', 'text file from Tobii', 'CallBack', cb_parse
 % "IMPORT & SYNCHRONIZE ET"
 uimenu( eyetracker_m, 'Label', 'Import & synchronize ET', 'CallBack', cb_importeyetracker, 'Separator', 'off', 'userdata', 'epoch:off; ');
 uimenu( eyetracker_m, 'Label', 'Evaluate synchronization (cross-corr.)', 'CallBack', cb_checksync, 'Separator', 'off', 'userdata', 'startup:off;'); % epoch:off;'  
-%uimenu( eyetracker_m, 'Label', 'Evaluate synchronization (cross-corr.)', 'CallBack', cb_checksync, 'Separator', 'off', 'userdata', 'epoch:off; ');
-
-
 
 % APPLY FUNCTION TO SELECTED CHANNELS
 helpers_m = uimenu( eyetracker_m, 'Label', 'Apply function to selected channels', 'Separator', 'on',  'userdata', 'startup:off;');
@@ -277,7 +281,7 @@ uimenu( helpers_m, 'Label', 'Remove baseline (selected channels)'      , 'CallBa
 uimenu( helpers_m, 'Label', 'Channel ERPs - with scalp maps'           , 'CallBack', cb_envelope_4, 'Separator', 'off', 'userdata', 'startup:off;');
 
 % "REJECT DATA BASED ON ET"
-rejectEyetrack_m = uimenu( eyetracker_m, 'Label', 'Reject data based on eye track'                        , 'Separator', 'on',  'userdata', 'startup:off;  ');
+rejectEyetrack_m = uimenu( eyetracker_m, 'Label', 'Reject data based on eye track'      , 'Separator', 'on',  'userdata', 'startup:off;  ');
 uimenu( rejectEyetrack_m, 'Label', 'Reject bad cont. data', 'CallBack', cb_rej_eyecontin, 'Separator', 'off', 'userdata', 'startup:off; epoch:off;');
 uimenu( rejectEyetrack_m, 'Label', 'Reject bad epochs',     'CallBack', cb_rej_eyeepochs, 'Separator', 'off', 'userdata', 'startup:off; continuous:off;');
 
@@ -289,6 +293,9 @@ uimenu( eyetracker_m, 'Label', 'Plot eye movement properties', 'CallBack', cb_pl
 
 % "PLOT SACCADES & FIXATIONS"
 uimenu( eyetracker_m, 'Label', 'Plot eye movement rate', 'CallBack', cb_plotrate, 'Separator', 'off', 'userdata', 'startup:off;  ');
+
+% "REJECT COMPONENTS WITH ET"
+uimenu( eyetracker_m, 'Label', 'Create overweighted ICA training data (OPTICAT)', 'CallBack', cb_overweight, 'Separator', 'off', 'userdata', 'startup:off;  ');
 
 % "REJECT COMPONENTS WITH ET"
 uimenu( eyetracker_m, 'Label', 'Reject components with eyetracker', 'CallBack', cb_etICA, 'Separator', 'off', 'userdata', 'startup:off;  ');

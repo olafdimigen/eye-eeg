@@ -60,7 +60,7 @@
 % Please cite this paper when using this method. Thanks!
 %
 % Author: od
-% Copyright (C) 2009-2017 Olaf Dimigen, HU Berlin
+% Copyright (C) 2009-2018 Olaf Dimigen, HU Berlin
 % olaf.dimigen@hu-berlin.de
 
 % This program is free software; you can redistribute it and/or modify
@@ -109,7 +109,22 @@ end
 
 %% compute cross correlation
 % based on entire recording (may include artifacts & loss of tracking!)
-[xc,lags] = xcorr(gaze_x,heog,MAXLAG); % get cross-correlation
+
+% it seems like xcorr is part of the signal processing toolbox
+% workaround (from https://stackoverflow.com/questions/7396814/cross-correlation-in-matlab-without-using-the-inbuilt-function)
+% check whether signal processing toolbox installed
+v=ver; [installedToolboxes{1:length(v)}] = deal(v.Name);
+
+% if license('test','Signal_Toolbox') % alternative 
+if all(ismember('Signal Processing Toolbox',installedToolboxes))  % not sure about name
+    [xc,lags] = xcorr(gaze_x,heog,MAXLAG); % get cross-correlation
+else
+    corrLength = MAXLAG*2-1;
+    %corrLength=length(a)+length(b)-1;
+    lags = [MAXLAG-corrLength:corrLength-MAXLAG];
+    xc=fftshift(ifft(fft(gaze_x,corrLength).*conj(fft(heog,corrLength))));
+end
+
 [maxvalue,ix] = max(abs(xc)); % find maximum xc
 sampleDiff = lags(ix);  % find lag with maximum xc
 

@@ -38,6 +38,13 @@
 %                  the partial occlusion of the pupil while the eye is 
 %                  closing and re-opening) that may otherwise not exceed 
 %                  the minvals/maxvals thresholds.
+%   rejectionnmethod  -  [1 or 2]
+%                  1: reject bad data intervals (cuts intervals from data!)
+%                     and inserts boundary events at the breaks
+%                  2: add special marker "bad_ET" to EEG.event for each bad 
+%                     data interval. These markers are considered by the
+%                     eye movement detection function (pop_detecteyemovements.m)
+%                     The dataset is not cut.
 %
 % Outputs:
 %   EEG         - EEG structure with bad intervals removed. For each
@@ -61,7 +68,7 @@
 % See also: rej_eyecontin, pop_rej_eyeepoch, pop_select
 %
 % Author: od
-% Copyright (C) 2009-2017 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% Copyright (C) 2009-2018 Olaf Dimigen & Ulrich Reinacher, HU Berlin
 % olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify
@@ -78,7 +85,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, 51 Franklin Street, Boston, MA 02110-1301, USA
 
-function [EEG, com] = pop_rej_eyecontin(EEG,chans,minvals,maxvals,windowsize)
+function [EEG, com] = pop_rej_eyecontin(EEG,chans,minvals,maxvals,windowsize,rejectionmethod)
 
 com = '';
 
@@ -93,14 +100,14 @@ if isempty(EEG.data)
 end
 
 try
-    if nargin < 5       
+    if nargin < 6
         % pop up dialogue
-        [chans minvals maxvals windowsize] = dlg_rej_eyecontin(mfilename,EEG);
+        [chans minvals maxvals windowsize rejectionmethod] = dlg_rej_eyecontin(mfilename,EEG);
     end
     
-    [EEG, badblocks] = rej_eyecontin(EEG,chans,minvals,maxvals,windowsize);
+    [EEG, badblocks] = rej_eyecontin(EEG,chans,minvals,maxvals,windowsize,rejectionmethod);
        
-    com = sprintf('%s = pop_rej_eyecontin(%s,%s,%s,%s,%s)',inputname(1),inputname(1),vararg2str(chans),vararg2str(minvals),vararg2str(maxvals),vararg2str(windowsize));
+    com = sprintf('%s = pop_rej_eyecontin(%s,%s,%s,%s,%s,%s)',inputname(1),inputname(1),vararg2str(chans),vararg2str(minvals),vararg2str(maxvals),vararg2str(windowsize),vararg2str(rejectionmethod));
     
 catch err
     if (strcmp(err.identifier,'MATLAB:unassignedOutputs'))

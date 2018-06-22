@@ -34,7 +34,7 @@
 %   pop_parsesmi, pop_importeyetracker
 %
 % author: ur
-% Copyright (C) 2009-2017 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% Copyright (C) 2009-2018 Olaf Dimigen & Ulrich Reinacher, HU Berlin
 % olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify
@@ -288,7 +288,7 @@ else % no events found: user feedback
 end
 
 %% Extract timestamps of *other* messages (not eyeevent, not keyword-messages)
-% New feature, Jan-2017, OD
+% New feature, Jan-2018, OD
 % Identify messages that begin with 'MSG' (e.g. user-send messages) so that 
 % their timestamps can be later converted into "eeg time" in function 
 % synchronize(). Extracting this information should be helpful for user 
