@@ -245,9 +245,11 @@ end
 %% update the sample index of events in the ET
 % for existing ET events, search for closest timestamp in the new time
 new_ix = zeros(length(ET.event),1);
-for k = ix_startevent:ix_endevent
-    new_ix(k) = searchclosest(ET.newtime,ET.event(k,1));
-end
+% for k = ix_startevent:ix_endevent
+%     new_ix(k) = searchclosest(ET.newtime,ET.event(k,1));
+% end
+new_ix = nearestpoint(ET.event(ix_startevent:ix_endevent,1),ET.newtime);
+
 ET.event(:,3) = new_ix;
 
 %% update sample index of imported eye movement events in ET
@@ -267,10 +269,21 @@ if isfield(ET,'eyeevent')
         
         % find corresponding sample in new ('rescaled') ET time
         new_ix   = zeros(n_events,3);
-        new_time = zeros(n_events,3);
-        for e = 1:2*n_events
-            [new_ix(e) new_time(e)] = searchclosest(ET.newtime,ET.eyeevent.(eventType).data(e));
-        end
+        %new_time = zeros(n_events,3);
+        
+        % with searchclosest, somewhat obfuscated code
+        % for e = 1:2*n_events
+        %   [new_ix(e) new_time(e)] = searchclosest(ET.newtime,ET.eyeevent.(eventType).data(e));
+        % end
+        
+        e = 1:n_events;
+        % find event start sample in rescaled time
+        new_ix(:,1)   = nearestpoint(ET.eyeevent.(eventType).data(e,1), ET.newtime);
+        %new_time(:,1) = ET.newtime(new_ix(:,1));
+        
+        % find event end sample in rescaled time
+        new_ix(:,2)   = nearestpoint(ET.eyeevent.(eventType).data(e,2), ET.newtime);
+        %new_time(:,2) = ET.newtime(new_ix(:,2)); 
         
         % update event "duration"
         new_ix(:,3) = new_ix(:,2)-new_ix(:,1)+1;
@@ -293,14 +306,20 @@ if isfield(ET,'othermessages')
     % delete messages with timestamps not within synchronizeable time range
     NotInRange = [ET.othermessages(:).timestamp] < starteventTime | [ET.othermessages(:).timestamp] > endeventTime;
     ET.othermessages(NotInRange) = [];
-    % go tru 'other' messages
-    for m = 1:length(ET.othermessages)
-        % find corresponding sample in new ('rescaled') ET time
-        [new_ix, new_time] = searchclosest(ET.newtime,ET.othermessages(m).timestamp);
-        new_ix             = new_ix-1 + eegEvents(1,2);
-        % add the corresponding EEG time (= sample of EEG corresponding to
-        % time that the message was send) to ET.othermessages
-        ET.othermessages(m).EEGsample = new_ix;
+    %     % go tru 'other' messages
+    %     for m = 1:length(ET.othermessages)
+    %         % find corresponding sample in new ('rescaled') ET time
+    %         [new_ix, new_time] = searchclosest(ET.newtime,ET.othermessages(m).timestamp);
+    %         new_ix             = new_ix-1 + eegEvents(1,2);
+    %         % add the corresponding EEG time (= sample of EEG corresponding to
+    %         % time that the message was send) to ET.othermessages
+    %         ET.othermessages(m).EEGsample = new_ix;
+    %     end    
+    m = 1:length(ET.othermessages);
+    new_ix = nearestpoint([ET.othermessages(m).timestamp], ET.newtime);
+    new_ix = new_ix-1 + eegEvents(1,2);
+    for j = m
+        ET.othermessages(j).EEGsample = new_ix(j);
     end
 end
 
@@ -313,7 +332,7 @@ n_nopartner  = sum(isnan(eegEventHasPartner(:,2)));
 [count, bin] = hist(eegEventHasPartner(:,end),-searchRadius:searchRadius);
 syncQuality  = [bin;count]';
 
-%% feedback on synch quality
+%% feedback on synch. quality
 fprintf('\nShared events of same type less than +/- %i samples apart: %i',searchRadius,n_total-n_nopartner);
 fprintf('\n\nSynchronization quality:')
 if n_nopartner == 0
