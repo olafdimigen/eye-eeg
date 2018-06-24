@@ -101,6 +101,7 @@ else
     fprintf('\n-- Eye track will be upsampled to match the EEG sampling rate\n');
 end
 
+
 %% produce new eye tracker time
 % create [n_eegsmp_range] linear spaced new sample times between
 % starteventTime and endeventTime. Creating this new, regularly spaced
@@ -110,11 +111,11 @@ end
 ET.newtime = linspace(starteventTime, endeventTime, n_eegsmp_range)';
 
 %% for each existing ET event, search for closest timestamp in new time
-% new_ix = zeros(length(ET.event),1);
+new_ix = zeros(length(ET.event),1);
 % for k = ix_startevent:ix_endevent
 %     new_ix(k) = searchclosest(ET.newtime,ET.event(k,1));
 % end
-new_ix = nearestpoint(ET.event(ix_startevent:ix_endevent,1),ET.newtime);
+new_ix(ix_startevent:ix_endevent) = nearestpoint(ET.event(ix_startevent:ix_endevent,1),ET.newtime);
 
 ET.event(:,3) = new_ix; % assign updated sample index to ET events
 
@@ -248,7 +249,7 @@ new_ix = zeros(length(ET.event),1);
 % for k = ix_startevent:ix_endevent
 %     new_ix(k) = searchclosest(ET.newtime,ET.event(k,1));
 % end
-new_ix = nearestpoint(ET.event(ix_startevent:ix_endevent,1),ET.newtime);
+new_ix(ix_startevent:ix_endevent) = nearestpoint(ET.event(ix_startevent:ix_endevent,1),ET.newtime);
 
 ET.event(:,3) = new_ix;
 
@@ -297,6 +298,7 @@ if isfield(ET,'eyeevent')
     
     clear new_* n_events inRange
 end
+
 
 %% update timestamp of 'other' ET messages (new in Jan-2017, OD)
 % = all messages starting with 'MSG', which are *not* keyword messages
@@ -360,8 +362,19 @@ fprintf('\n-------------------------\n\n');
 % - scatterplot of event latencies in original time ('shared' events only)
 % - histogram of sync. error ('shared' events only)
 if plotFig
-    figure('Name','synchronize(): Synchronization results');
+    fprintf('\nMaking plot visualizing synchronization results...')
     
+    syncfig = figure('Name','synchronize(): Synchronization results');
+
+    % hotfix for v.085 due to changed legend behavior in R2017a 
+    % avoid that legend auto-updates with new generic entries (e.g. "data 1")
+    % this crashs scripts for large legend (Thanks, TheMathworks!)
+    % 20180624 - OD
+    try
+        set(syncfig,'defaultLegendAutoUpdate','off')
+    catch legend_autoupdate_err
+    end
+        
     %% latency comparisons after synchronization (all events)
     subplot(2,2,1:2); hold on; box on;
     title('Overview: Event latencies in synchronized dataset','fontweight','bold')
@@ -385,7 +398,7 @@ if plotFig
     
     % randomized color table over unique types
     rgb_type = colors_rgb( mod( (1:size(types_unique,1))-1, size(colors_rgb,1)) +1, :); % pick color
-    % generate brackground
+    % generate background
     h_bgGr = hggroup;
     % plot areas outside sync. range grey
     fill([0 eeg_abssmp(1) eeg_abssmp(1) 0],[0 0 1 1],[.5 .5 .5], 'Parent',h_bgGr);
@@ -393,22 +406,25 @@ if plotFig
     % horizontal separator line
     plot([0 n_eegsmp],[0.5 0.5],'linestyle','-','color',[0 0 0],'linewidth',1.0, 'Parent',h_bgGr)
     % handle to feed legend()
+    
     hleg = zeros(size(types_unique));
+    
     % loop through unique event types
-    for loop = 1 : length(types_unique);
+    for loop = 1:length(types_unique)
+        fprintf('\nPlotting events of type %i...',types_unique(loop))
         % 1. plot latencies of EEG triggers between start-event & end-event
         ix1 = find(types_unique(loop) == eeg_type);
-        if ix1
-            plot(eeg_abssmp(ix1),0.499,'linestyle','none','marker','.','color',rgb_type(loop,1:3),'handleVisibility','off');
-            hline =  plot(eeg_abssmp([ix1 ix1])', [0 0.499],'linestyle','-','color',rgb_type(loop,1:3),'linewidth',1,'handleVisibility','off');
+        if ~isempty(ix1)
+            plot(eeg_abssmp(ix1),0.499,'linestyle','none','marker','.','color',rgb_type(loop,1:3),'handleVisibility','off'); % "needle hats"
+            hline = plot(eeg_abssmp([ix1 ix1])', [0 0.499],'linestyle','-','color',rgb_type(loop,1:3),'linewidth',1,'handleVisibility','off');
             hleg(loop) = hline(1);
         end
         % 2. plot latencies of ET triggers between start-event & end-event
         ix2 = find(types_unique(loop) == et_type);
-        if ix2
+        if ~isempty(ix2)
             plot(et_abssmp(ix2),0.501,'linestyle','none','marker','.','color',rgb_type(loop,1:3),'handleVisibility','off');
-            hline =    plot(et_abssmp([ix2 ix2])', [0.501 1],'linestyle','-','color',rgb_type(loop,1:3),'linewidth',1,'handleVisibility','off');
-            if isempty(ix1) % unique in et
+            hline = plot(et_abssmp([ix2 ix2])', [0.501 1],'linestyle','-','color',rgb_type(loop,1:3),'linewidth',1,'handleVisibility','off');
+            if isempty(ix1) % unique in ET
                 hleg(loop) = hline(1);
             end
         end
@@ -418,16 +434,17 @@ if plotFig
     xlabel('Time after start of EEG recording [samples]')
     set(gca,'yTick',[0.25 0.75]);
     set(gca,'yTickLabel',{'EEG events','ET events'});
+
     % show legend
     try % hotfix for v.0.337
         get(hleg,{'DisplayName'});
         set(hleg,'handleVisibility','on');
         set(hleg,{'DisplayName'}, cellstr(num2str(types_unique)) );
-        legend('show')
+        legend('show')       
     catch
         fprintf('\nSubplot legend not shown.')
     end
-    
+        
     %% scatterplot of event latencies ("shared" events only)
     subplot(2,2,3); hold on; box on;
     title('Comparison: Event latencies','fontweight','bold')

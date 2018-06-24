@@ -99,7 +99,7 @@
 % the searchRadius to identify matching triggers to 5 samples.
 %
 % Author: ur & od
-% Copyright (C) 2009-2018 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% Copyright (C) 2009-2017 Olaf Dimigen & Ulrich Reinacher, HU Berlin
 % olaf.dimigen@hu-berlin.de
 
 % This program is free software; you can redistribute it and/or modify
@@ -284,7 +284,7 @@ try
     %% synchronize ET and EEG based on start-event and end-event
     fprintf('\n%s(): Synchronizing EEG and eye tracking data...',mfilename);
     [ET,eegEvents,syncErrorTable] = synchronize(ET, startEndEvent, eegEvents, EEG.srate, EEG.pnts, doRegression, filterEyetrack, plotFig, searchRadius);
-    
+       
     %% store info about sync quality with dataset (EEG.etc)
     EEG.etc.eyetracker_syncquality = syncErrorTable;
     
@@ -301,6 +301,7 @@ try
         channelLabels(n) = strrep(channelLabels(n),'[','('); % causes problem with eeg_decodechans()
         
     end
+    
     if changedName
         fprintf('\n%s(): Replaced characters in ET channel names for compatibility with EEGLAB\n',mfilename)
     end
@@ -315,7 +316,7 @@ try
         sampleFirstEvent = eegEvents(1,2);
         sampleLastEvent  = eegEvents(end,2);
         
-        % set all ET data outside the synchronized range to zero
+        % set all ET data outside synchronized range to zero
         EEG.data = [EEG.data; zeros(length(importColumns),EEG.pnts)];
         EEG.data(EEG.nbchan+1:end, sampleFirstEvent:sampleLastEvent) = ET.syncdata(:,importColumns)';
         EEG.nbchan = size(EEG.data,1);

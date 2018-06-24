@@ -242,7 +242,7 @@ end
 
 %% get "bad_ET" intervals from EEG.event structure
 badvector = zeros(1,size(EEG.data,2)*size(EEG.data,3));
-ix_badETevent = ismember({EEG.event.type},'bad_ET');
+ix_badETevent = find(ismember({EEG.event.type},'bad_ET'));
 if ~isempty(ix_badETevent)
     bad_lat     = [EEG.event(ix_badETevent).latency];
     bad_dur     = [EEG.event(ix_badETevent).duration];
