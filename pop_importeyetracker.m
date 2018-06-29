@@ -319,6 +319,11 @@ try
         % set all ET data outside synchronized range to zero
         EEG.data = [EEG.data; zeros(length(importColumns),EEG.pnts)];
         EEG.data(EEG.nbchan+1:end, sampleFirstEvent:sampleLastEvent) = ET.syncdata(:,importColumns)';
+
+        % Annoyngly, EEGLAB creates float (e.g. 10000.5) event latencies after changes of the sampling rate
+        % Maybe use round() in case that data was resampled in EEGLAB? -> nope, creates crashes
+        % EEG.data(EEG.nbchan+1:end,round(sampleFirstEvent):round(sampleLastEvent)) = ET.syncdata(:,importColumns)'; 
+
         EEG.nbchan = size(EEG.data,1);
     end
     

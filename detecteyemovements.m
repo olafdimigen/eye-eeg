@@ -236,7 +236,7 @@ else
     if writesac && writefix, fprintf('\n-- Saccades and fixations will be added to EEG.event.');
     elseif writesac,         fprintf('\n-- Saccades will be added to EEG.event.');
     elseif writefix,         fprintf('\n-- Fixations will be added to EEG.event.');
-    else                     fprintf('\n-- Saccades and fixations are detected, but NOT stored anywhere.');
+    else,                    fprintf('\n-- Saccades and fixations are detected, but NOT stored anywhere.');
     end
 end
 
@@ -244,6 +244,10 @@ end
 badvector = zeros(1,size(EEG.data,2)*size(EEG.data,3));
 ix_badETevent = find(ismember({EEG.event.type},'bad_ET'));
 if ~isempty(ix_badETevent)
+    
+    fprintf('\n--------------------------------------------------------------------')
+    fprintf('\nFound \"bad_ET\" events in EEG.event.\nThese intervals will be ignored for saccade detection!')
+    fprintf('\n--------------------------------------------------------------------')
     bad_lat     = [EEG.event(ix_badETevent).latency];
     bad_dur     = [EEG.event(ix_badETevent).duration];
     bad_ET      = [bad_lat; bad_dur]';

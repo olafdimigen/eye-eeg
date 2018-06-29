@@ -186,7 +186,7 @@ cb_plotrate         = [try_strings.no_check,  '[LASTCOM]     = pop_ploteventrate
 
 % CREATE OPTIMIZED ICA TRAINING DATA (OPTICAT)
 % cb_overweight       = [try_strings.no_check,  '[EEG_overweighted LASTCOM] = pop_overweightevents(EEG);', catch_strings.add_to_hist];
-cb_overweight       = [try_strings.no_check,  'EEG_overweighted = pop_eegfiltnew(EEG); [EEG_overweighted LASTCOM] = pop_overweightevents(EEG); [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG_overweighted, size(ALLEEG,2),''setname'',''Overweighted training data'',''gui'',''off''); eeglab redraw;', catch_strings.add_to_hist];
+cb_overweight       = [try_strings.no_check,  'fprintf(''\n\nOPTICAT: Filtering the data and then overweighting artifact samples...''); EEG_overweighted = pop_eegfiltnew(EEG); [EEG_overweighted LASTCOM] = pop_overweightevents(EEG); [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG_overweighted, size(ALLEEG,2),''setname'',''Overweighted training data'',''gui'',''off''); eeglab redraw;', catch_strings.add_to_hist];
 
 
 % EYETRACKER-SUPPORTED ICA
@@ -282,7 +282,7 @@ uimenu( helpers_m, 'Label', 'Channel ERPs - with scalp maps'           , 'CallBa
 
 % "REJECT DATA BASED ON ET"
 rejectEyetrack_m = uimenu( eyetracker_m, 'Label', 'Reject data based on eye track'      , 'Separator', 'on',  'userdata', 'startup:off;  ');
-uimenu( rejectEyetrack_m, 'Label', 'Reject bad cont. data', 'CallBack', cb_rej_eyecontin, 'Separator', 'off', 'userdata', 'startup:off; epoch:off;');
+uimenu( rejectEyetrack_m, 'Label', 'Reject or flag bad continuous data', 'CallBack', cb_rej_eyecontin, 'Separator', 'off', 'userdata', 'startup:off; epoch:off;');
 uimenu( rejectEyetrack_m, 'Label', 'Reject bad epochs',     'CallBack', cb_rej_eyeepochs, 'Separator', 'off', 'userdata', 'startup:off; continuous:off;');
 
 % "DETECT SACCADES & FIXATIONS"
@@ -295,10 +295,10 @@ uimenu( eyetracker_m, 'Label', 'Plot eye movement properties', 'CallBack', cb_pl
 uimenu( eyetracker_m, 'Label', 'Plot eye movement rate', 'CallBack', cb_plotrate, 'Separator', 'off', 'userdata', 'startup:off;  ');
 
 % "REJECT COMPONENTS WITH ET"
-uimenu( eyetracker_m, 'Label', 'Create overweighted ICA training data (OPTICAT)', 'CallBack', cb_overweight, 'Separator', 'off', 'userdata', 'startup:off;  ');
+uimenu( eyetracker_m, 'Label', 'Create optimized ICA training data', 'CallBack', cb_overweight, 'Separator', 'on', 'userdata', 'startup:off;  ');
 
 % "REJECT COMPONENTS WITH ET"
-uimenu( eyetracker_m, 'Label', 'Reject components with eyetracker', 'CallBack', cb_etICA, 'Separator', 'off', 'userdata', 'startup:off;  ');
+uimenu( eyetracker_m, 'Label', 'Reject ICA components with eyetracker', 'CallBack', cb_etICA, 'Separator', 'off', 'userdata', 'startup:off;  ');
 
 % "ABOUT THE TOOLBOX"
 uimenu( eyetracker_m, 'Label', 'About this toolbox', 'CallBack', 'pophelp(''eegplugin_eye_eeg.m'');', 'Separator', 'on', 'userdata', 'startup:on;');

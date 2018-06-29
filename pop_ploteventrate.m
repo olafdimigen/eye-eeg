@@ -55,7 +55,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, 51 Franklin Street, Boston, MA 02110-1301, USA
 
-function com = pop_ploteventrate(EEG,rate_event) % ### TODO: times rate
+function com = pop_ploteventrate(EEG,rate_event)
 
 com = '';
 
@@ -64,21 +64,21 @@ if nargin < 1
     return;
 end
 
-% try
-if nargin < 2
-    % pop dialogue
-    rate_event = dlg_ploteventrate(mfilename,EEG);
+try
+    if nargin < 2
+        % pop dialogue
+        rate_event = dlg_ploteventrate(mfilename,EEG);
+    end
+    
+    ploteventrate(EEG,rate_event);
+    
+catch err
+    if (strcmp(err.identifier,'MATLAB:unassignedOutputs'))
+        return
+    else
+        rethrow(err);
+    end
 end
-
-ploteventrate(EEG,rate_event);
-
-% catch err
-%     if (strcmp(err.identifier,'MATLAB:unassignedOutputs'))
-%         return
-%     else
-%         rethrow(err);
-%     end
-% end
 
 
 %% Show pop_resample() EEG.event.duration warning if EEGLAB version < X
