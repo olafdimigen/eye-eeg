@@ -86,13 +86,20 @@ function et = parsetobii(inputFile,outputMatFile,triggerKeyword)
 if nargin < 2
     help(mfilename);
     return;
-end;
+end
 
 %% feedback
 fprintf('\n\n%s(): Parsing Tobii raw data. This may take a moment...', mfilename)
 fprintf('\n-- reading txt...')
 
 fid = fopen(inputFile,'r');
+%% Bugfix: 16-bit Unicode encoding
+% Use the following code instead if you accidentally used Unicode 16-bit 
+% encoding when you exported the data from Tobii software (instead of 8-bit)
+%
+% warning off MATLAB:iofun:UnsupportedEncoding;
+% fid = fopen(inputFile, 'r','n', 'Unicode'); 
+
 if fid == -1
     error('\nThe source file ''%s'' was not found.\n',inputFile)
 end
@@ -114,24 +121,27 @@ fprintf('\n\tDone.')
 
 %% get data
 fprintf('\n-- getting data...')
+% replace blank cells with NaN values
+B = strrep(B,sprintf('\t\t'),sprintf('\tNaN\t'));
+B = strrep(B,sprintf('\t\r'),sprintf('\tNaN\r'));
+B = strrep(B,sprintf('\t\n'),sprintf('\tNaN\n'));
+B = strrep(B,sprintf('\t\t'),sprintf('\t'));
+% replace decimal , with .
+B = strrep(B,sprintf(','),sprintf('.'));
+
 dataLines = regexp(B,'(^\s*[^\r\n]*)','match','lineanchors')'; % includes the header line
 clear B
-% replace blank cells with NaN values
-dataLines = strrep(dataLines,sprintf('\t\t'),sprintf('\tNaN\t'));
-dataLines = strrep(dataLines,sprintf('\t\t'),sprintf('\t'));
-% replace decimal , with .
-dataLines = strrep(dataLines,sprintf(','),sprintf('.'));
 % remove header row
 dataLines(1) = [];
 % split and restructure by columns
 dataLinesSplit = regexp(dataLines,'(\t)','split')';
 dataLinesSplit = mat2cell(vertcat(dataLinesSplit{:}), size(dataLines,1), ones(1,length(dataLinesSplit{1}))); % error matrix size not consistent
 clear dataLines
-% remove last column if empty
-if isempty(dataLinesSplit{1,end}{1})
-    dataLinesSplit(end) = [];
-    dataColHeader(end)  = [];
-end
+% % remove last column if empty
+% if isempty(dataLinesSplit{1,end}{1})
+%     dataLinesSplit(end) = [];
+%     dataColHeader(end)  = [];
+% end
 numberLines = length(dataLinesSplit{1});
 
 et.colheader = {};
