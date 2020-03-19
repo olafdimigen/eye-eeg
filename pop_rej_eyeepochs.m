@@ -18,7 +18,7 @@
 %   EEG         - EEG structure
 %
 % Author: od
-% Copyright (C) 2009-2018 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% Copyright (C) 2009-2020 Olaf Dimigen & Ulrich Reinacher, HU Berlin
 % olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify

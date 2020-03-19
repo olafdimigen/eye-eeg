@@ -10,15 +10,13 @@
 %   oculomotor research, or computing fixation-related potentials (FRPs).
 %
 %   EYE-EEG was developed by Olaf Dimigen and Ulrich Reinacher at 
-%   Humboldt University at Berlin, Germany, 2009-2018
+%   Humboldt-University at Berlin, Germany, 2009-2020
 %
 %   >> web: http://www2.hu-berlin.de/eyetracking-eeg
 %
-%   Copyright (C): Olaf Dimigen with Ulrich Reinacher, 2009-2018
+%   Copyright (C): Olaf Dimigen with Ulrich Reinacher, 2009-2020
 %   User feedback welcome: email: olaf.dimigen@hu-berlin.de
 %
-%   Project made possible by a grant from Deutsche Forschungsgemeinschaft
-%   to Research Group 868, http://mbd.uni-potsdam.de
 %
 %   If you use functions of this toolbox, please cite this reference:
 %   ------------------------------------------------------------------
@@ -28,20 +26,25 @@
 %
 %   If you use the saccade/fixation detection, please additionally cite:
 %
-%   Engbert, R., & Mergenthaler, K. (2006). Microsaccades are triggered
-%   by low retinal image slip, PNAS, Vol. 103 (18), 7192-7197
+%   Engbert, R., & Kliegl, R. (2003). Microsaccades uncover the orientation 
+%   of covert attention. Vision research, 43(9), 1035-1045.
 %
 %   If you select independent components based on the sac/fix variance
-%   ratio criterion, make sure to also cite:
+%   ratio criterion and/or use optimize ICA training procedures, make sure 
+%   to also cite these two papers:
 %
 %   Plöchl, M., Ossandon, J.P., & König, P. (2012). Combining EEG and
 %   eye tracking: identification, characterization, and correction of
 %   eye movement artifacts in electroencephalographic data. Frontiers in
 %   Human Neuroscience, doi: 10.3389/fnhum.2012.00278
 %
-%   Please clarify that you have used the implementation of these methods
-%   in EYE-EEG, as they may differ from the original versions in some
-%   regards
+%   Dimigen, O. (2020). Optimizing the ICA-based removal of ocular EEG 
+%   artifacts from free viewing experiments. NeuroImage, 207, 116117
+%
+%%
+%   Also, I would suggest to please clarify that you have used the 
+%   implementation of these methods in EYE-EEG, as they may differ from the 
+%   original versions in some regards
 %
 %   Installation:
 %   Simply copy the folder called "eye_eegX.XX" containing the toolbox's m-files

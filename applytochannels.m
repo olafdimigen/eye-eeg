@@ -23,10 +23,12 @@
 %
 % Example usage of the function might look like this:
 %
-%   >> EEG = applytochannels(EEG,[1:32],'pop_rmbase(EEG,[-100 0]);');
+%   >> EEG = applytochannels(EEG,[1:32],'pop_rmbase(EEG,[-100 0],[]);');
 %
 %   In this example, channels 1 to 32 are baseline corrected using EEGLAB
 %   function pop_rmbase(), but not the other (non-EEG) channels
+%   (Note: Starting with version 2019, EEGLAB provides the possibility to 
+%   apply the baseline correction only to certain channels)
 %
 %   >> EEG = applytochannels(EEG,[1:32],'pop_eegfilt(EEG,0,80,[],[0],0,0,''fir1'',0);');
 %
@@ -36,7 +38,7 @@
 %   characters like (')
 %
 % Author: od
-% Copyright (C) 2009-2018 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% Copyright (C) 2009-2020 Olaf Dimigen & Ulrich Reinacher, HU Berlin
 % olaf.dimigen@hu-berlin.de
 
 % This program is free software; you can redistribute it and/or modify

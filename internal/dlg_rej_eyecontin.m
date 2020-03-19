@@ -1,7 +1,7 @@
 % dlg_rej_eyecontin - pops dialogue, called by pop_rej_eyecontin
 %                see >> help pop_rej_eyecontin
 %
-% Copyright (C) 2009-2018 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% Copyright (C) 2009-2020 Olaf Dimigen & Ulrich Reinacher, HU Berlin
 % olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify
