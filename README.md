@@ -1,2 +1,2 @@
-# eye-eeg_dev
-Development version of EYE-EEG (new features, may be unstable!)
+# eye-eeg
+EYE-EEG toolbox, see http://www2.hu-berlin.de/eyetracking-eeg
