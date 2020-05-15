@@ -192,9 +192,16 @@ cb_plotrate         = [try_strings.no_check,  '[LASTCOM]     = pop_ploteventrate
 cb_overweight       = [try_strings.no_check,  'fprintf(''\n\nOPTICAT: Filtering the data and then overweighting artifact samples...''); EEG_overweighted = pop_eegfiltnew(EEG); [EEG_overweighted LASTCOM] = pop_overweightevents(EEG); [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG_overweighted, size(ALLEEG,2),''setname'',''Overweighted training data'',''gui'',''off''); eeglab redraw;', catch_strings.add_to_hist];
 
 
+pause(0.001)
+% Hotfix: If "ERPLAB" is also in the plugins folder, it messes up the menu 
+% order of the main EEGLAB menus (File, ..., ..., Help etc.) causing EYE-EEG's 
+% EyeTracker menu (created below) to be also in the wrong place. Inserting this
+% "pause" solves this issue, possible by forcing a display update
+% between addition of the ERPLAB menu and the "Eyetracker" menu (?).
+% This is a very weird bug! OD, May 2020
+
 % EYETRACKER-SUPPORTED ICA
 cb_etICA            = [try_strings.check_ica, '[EEG vartable LASTCOM] = pop_eyetrackerica(EEG);', catch_strings.add_to_hist];
-
 
 %% create GUI menus
 W_MAIN = findobj('tag','EEGLAB');
