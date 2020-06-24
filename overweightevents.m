@@ -93,9 +93,15 @@ nsacpoints = round(ow_proportion * npoints); % desired number of (redundant) sac
 %% create event-locked epochs to overweight
 sac = pop_epoch(EEG,{event2overweight},timelim);
 
-if removemean
-    sac = pop_rmbase(sac,[],[]); % baseline subtracted across whole epoch at all channels
+% subtract baseline across whole epoch? (recommended for correction of saccadic spike potentials)
+if removemean 
+    	try
+    		sac = pop_rmbase(sac,[],[]); % newer EEGLAB versions: 3 mandatory inputs to pop_rmbase
+	catch ME
+		sac = pop_rmbase(sac,[]); % older EEGLAB versions
+	end
 end
+
 %sac = applytochannels(sac,1:NCHANS_EEG,'pop_rmbase( EEG,[],[]);');
 
 %% overweight (=copy & re-append) overweight-event-locked epochs
