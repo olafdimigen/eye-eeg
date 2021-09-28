@@ -112,13 +112,8 @@
 % Engbert, R., & Kliegl, R. (2003). Microsaccades uncover the orientation
 % of covert attention. Vision Research, Vol. 43, 1035-1045
 %
-% ...as well as...
-%
-% Engbert, R., & Mergenthaler, K. (2006). Microsaccades are triggered by 
-% low retinal image slip, PNAS, Vol. 103 (18), 7192-7197
-%
 % Author: od
-% Copyright (C) 2009-2020 Olaf Dimigen, HU Berlin
+% Copyright (C) 2009-2021 Olaf Dimigen, HU Berlin
 % olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify
@@ -236,7 +231,7 @@ else
     if writesac && writefix, fprintf('\n-- Saccades and fixations will be added to EEG.event.');
     elseif writesac,         fprintf('\n-- Saccades will be added to EEG.event.');
     elseif writefix,         fprintf('\n-- Fixations will be added to EEG.event.');
-    else,                    fprintf('\n-- Saccades and fixations are detected, but NOT stored anywhere.');
+    else                     fprintf('\n-- Saccades and fixations are detected, but NOT stored anywhere.');
     end
 end
 
@@ -244,10 +239,7 @@ end
 badvector = zeros(1,size(EEG.data,2)*size(EEG.data,3));
 ix_badETevent = find(ismember({EEG.event.type},'bad_ET'));
 if ~isempty(ix_badETevent)
-    
-    fprintf('\n--------------------------------------------------------------------')
-    fprintf('\nFound \"bad_ET\" events in EEG.event.\nThese intervals will be ignored for saccade detection!')
-    fprintf('\n--------------------------------------------------------------------')
+    fprintf('\nFound \"bad_ET\" events in EEG.events...')
     bad_lat     = [EEG.event(ix_badETevent).latency];
     bad_dur     = [EEG.event(ix_badETevent).duration];
     bad_ET      = [bad_lat; bad_dur]';
@@ -437,15 +429,59 @@ for e=1:nepochs
                     clusterwarning = true;
                 end
                 
+                % 1: saccade onset (sample)
+                % 2: saccade offset (sample)
+                % 3: duration (samples)
+                % 4: delay between eyes (samples)
+                % *5: vpeak (peak velocity)
+                % *6: saccade "distance" (eucly. dist. between start and endpoint)
+                % *7: saccade angle (based on saccade "distance")
+                % 8: saccade "amplitude" (eucly. dist. of min/max in full saccade trajectory)
+                % 9: saccade angle (based on saccade "amplitude")
+                %10: index of corresponding data epoch (1 in case of contin. data)
+                %*11: horizontal (x) gaze position before start of saccade (pixel)
+                %*12: vertial (y) gaze position before start of saccade (pixel)
+                %*13: horizontal (x) gaze position after end of saccade (pixel)
+                %*14: vertical (y) gaze position after end of saccade (pixel)
+                
+                % update 09/2021: add properties of incoming sacc. to each fixation
+                fix(f,11) = sac(f,5); % incoming vmax
+                fix(f,12) = sac(f,6); % incoming distance ("amplitude")
+                fix(f,13) = sac(f,7); % incoming angle
+                fix(f,14) = sac(f,11); % sac_startpos_x
+                fix(f,15) = sac(f,12); % sac_startpos_y
+                fix(f,16) = sac(f,13); % sac_endpos_y
+                fix(f,17) = sac(f,14); % sac_endpos_y                
             end
         end
         % if epoch does not begin with saccade, add first fixation
         if sac(1,1) > 1
-            fix = [[1 sac(1,1)-1]; fix];
+            % fix = [[1 sac(1,1)-1]; fix];
+            % update 09/2021:
+            startfix(1) = 1;
+            startfix(2) = sac(1,1)-1;
+            % no incoming sacc. properties if data begins with fix, add "NaN"
+            startfix(11:17) = NaN; 
+            fix = [startfix; fix];
         end
         % if epoch does not end with saccade, add last fixation
         if sac(end,2) < nsample
-            fix = [fix;[sac(end,2)+1 nsample]];
+
+            % fix = [fix;[sac(end,2)+1 nsample]];
+            
+            % update 09/2021: add properties of incoming sacc. to each fixation
+            lastfix(1) = sac(end,2)+1;
+            lastfix(2) = nsample;
+            % incoming saccade properties:
+            lastfix(11) = sac(end,5); % incoming vmax
+            lastfix(12) = sac(end,6); % incoming distance ("amplitude")
+            lastfix(13) = sac(end,7); % incoming angle
+            lastfix(14) = sac(end,11); % sac_startpos_x
+            lastfix(15) = sac(end,12); % sac_startpos_y
+            lastfix(16) = sac(end,13); % sac_endpos_y
+            lastfix(17) = sac(end,14); % sac_endpos_y
+            
+            fix = [fix;lastfix];
         end
         
         % add more fixation properties
@@ -552,23 +588,23 @@ if nepochs == 1
             if uppr > EEG.pnts, uppr = EEG.pnts; end
             boundvector(lowr:uppr) = 1;
         end
-        nearboundsmp = find(boundvector);
-        
-        % option 1: event onset is close to boundary
-        % fakesac = find(ismember(allsac(:,1),nearboundsmp));
-        % fakefix = find(ismember(allfix(:,1),nearboundsmp));
-        
-        % option 2: event on- or offset is close to boundary
-        fakesac = find(ismember(allsac(:,1),nearboundsmp) | ismember(allsac(:,2),nearboundsmp));
-        fakefix = find(ismember(allfix(:,1),nearboundsmp) | ismember(allfix(:,2),nearboundsmp));
-
-        allsac(fakesac,:) = [];
-        allfix(fakefix,:) = [];
-        fprintf('\n--------------------------------------------------------------------');
-        fprintf('\nFound %i data breaks (boundary events) in the continuous data',length(ix_bnd));
-        fprintf('\nRemoving eye movements that might be artifacts of data breaks:');
-        fprintf('\nRemoved %i saccades  < %i ms away from a boundary',length(fakesac),BOUNDDIST_MS);
-        fprintf('\nRemoved %i fixations < %i ms away from a boundary',length(fakefix),BOUNDDIST_MS);
+% %         nearboundsmp = find(boundvector);
+% %         
+% %         % option 1: event onset is close to boundary
+% %         % fakesac = find(ismember(allsac(:,1),nearboundsmp));
+% %         % fakefix = find(ismember(allfix(:,1),nearboundsmp));
+% %         
+% %         % option 2: event on- or offset is close to boundary
+% %         fakesac = find(ismember(allsac(:,1),nearboundsmp) | ismember(allsac(:,2),nearboundsmp));
+% %         fakefix = find(ismember(allfix(:,1),nearboundsmp) | ismember(allfix(:,2),nearboundsmp));
+% % 
+% %         allsac(fakesac,:) = [];
+% %         allfix(fakefix,:) = [];
+%         fprintf('\n--------------------------------------------------------------------');
+%         fprintf('\nFound %i data breaks (boundary events) in the continuous data',length(ix_bnd));
+%         fprintf('\nRemoving eye movements that might be artifacts of data breaks:');
+%         fprintf('\nRemoved %i saccades  < %i ms away from a boundary',length(fakesac),BOUNDDIST_MS);
+%         fprintf('\nRemoved %i fixations < %i ms away from a boundary',length(fakefix),BOUNDDIST_MS);
     end
 end
 
@@ -595,7 +631,7 @@ end
 
 %% user feedback: saccade & fixation detection
 fprintf('\n--------------------------------------------------------------------');
-fprintf('\nVelocity thresholds used:'); if nepochs > 1, fprintf(' (mean across epochs):'); end;
+fprintf('\nVelocity thresholds used:'); if nepochs > 1, fprintf(' (mean across epochs):'); end
 if ldata, fprintf('\n\tLeft eye.  Horiz.: %.2f %s/s. Vert.: %.2f %s/s',mean(l_msdx(e)*vfac*degperpixel),metric,mean(l_msdy*vfac*degperpixel),metric); end
 if rdata, fprintf('\n\tRight eye. Horiz.: %.2f %s/s. Vert.: %.2f %s/s',mean(r_msdx(e)*vfac*degperpixel),metric,mean(r_msdy*vfac*degperpixel),metric); end
 fprintf('\n--------------------------------------------------------------------')
@@ -649,16 +685,19 @@ if writefix || writesac
     end
     
     % write fixations
+    % update 09/2021: fixations also have infos about incoming saccade properties:
+    % 'sac_vmax','sac_amplitude','sac_angle','sac_startpos_x','sac_startpos_y','sac_endpos_x', 'sac_endpos_y'
+    % in fix columns: [11 12 13 14 15 16 17]
     if writefix
         fprintf('\n--------------------------------------------------------------------')
         fprintf('\nAdding %i fixations to EEG.event...\n',size(allfix,1))
         if ldata && rdata % binocular
-            EEG = addevents(EEG,allfix(:,[1 3 8 9 10]),{'latency','duration','fix_avgpos_x','fix_avgpos_y','epoch'},'fixation');
+            EEG = addevents(EEG,allfix(:,[1 3 8 9 10  11 12 13 14 15 16 17]),{'latency','duration','fix_avgpos_x','fix_avgpos_y','epoch', 'sac_vmax','sac_amplitude','sac_angle','sac_startpos_x','sac_startpos_y','sac_endpos_x','sac_endpos_y'},'fixation');
             %EEG = addevents(EEG,allfix(:,[1 3 4 5 6 7 10]),{'latency','duration','fixposition_ly','fixposition_lx','fixposition_ry','fixposition_rx','epoch'},'fixation');
         elseif ldata % left eye recorded
-            EEG = addevents(EEG,allfix(:,[1 3 4 5 10]),{'latency','duration','fix_avgpos_x','fix_avgpos_y','epoch'},'fixation');        
+            EEG = addevents(EEG,allfix(:,[1 3 4 5 10  11 12 13 14 15 16 17]),{'latency','duration','fix_avgpos_x','fix_avgpos_y','epoch', 'sac_vmax','sac_amplitude','sac_angle','sac_startpos_x','sac_startpos_y','sac_endpos_x','sac_endpos_y'},'fixation');        
         elseif rdata % right eye recorded
-            EEG = addevents(EEG,allfix(:,[1 3 6 7 10]),{'latency','duration','fix_avgpos_x','fix_avgpos_y','epoch'},'fixation');
+            EEG = addevents(EEG,allfix(:,[1 3 6 7 10  11 12 13 14 15 16 17]),{'latency','duration','fix_avgpos_x','fix_avgpos_y','epoch', 'sac_vmax','sac_amplitude','sac_angle','sac_startpos_x','sac_startpos_y','sac_endpos_x','sac_endpos_y'},'fixation');
         end
     end
     fprintf('--------------------------------------------------------------------')

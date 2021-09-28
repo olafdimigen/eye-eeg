@@ -4,9 +4,8 @@
 % of the same type (e.g., type "123") is found within a search radius of
 % "searchRadius" samples.
 %
-% Copyright (C) 2009-2020 Olaf Dimigen & Ulrich Reinacher, HU Berlin
-% olaf.dimigen@hu-berlin.de
-
+% Copyright (C) 2009-2018 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% olaf@dimigen.de
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
 % the Free Software Foundation; either version 3 of the License, or

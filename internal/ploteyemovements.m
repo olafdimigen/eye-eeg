@@ -45,7 +45,7 @@
 % in pixels). This also affects the saccade angle.
 %
 % Author: od
-% Copyright (C) 2009-2020 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% Copyright (C) 2009-2018 Olaf Dimigen & Ulrich Reinacher, HU Berlin
 % olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify
@@ -143,10 +143,10 @@ if plotsac
     hline = findobj(gca,'Type','line');
     set(hline,'LineWidth',1.2); % make line thicker
     title('Saccades: Angular histogram','fontweight', 'bold')
-    polar_flipy
+       
     if polar_flipy
         set(gca,'ydir','reverse');
-        fprintf('\n%s(): Vertical axis of polar plot (showing saccade angles) is flipped.',mfilename)        
+        fprintf('\n%s(): Vertical axis of polar plot (showing saccade angles) is flipped!',mfilename)        
     else
         fprintf('\n%s(): Vertical axis of polar plot (showing saccade angles) is NOT flipped.',mfilename)
     end

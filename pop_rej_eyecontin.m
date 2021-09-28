@@ -68,7 +68,7 @@
 % See also: rej_eyecontin, pop_rej_eyeepoch, pop_select
 %
 % Author: od
-% Copyright (C) 2009-2020 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% Copyright (C) 2009-2021 Olaf Dimigen & Ulrich Reinacher, HU Berlin
 % olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify

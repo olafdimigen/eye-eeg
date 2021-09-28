@@ -39,9 +39,8 @@
 % respectively.
 %
 % Authors: ur & od
-% Copyright (C) 2009-2020 Olaf Dimigen & Ulrich Reinacher, HU Berlin
-% olaf.dimigen@hu-berlin.de
-
+% Copyright (C) 2009-2018 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% olaf@dimigen.de
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
 % the Free Software Foundation; either version 3 of the License, or
@@ -63,7 +62,7 @@ function [EEG] = addevents(EEG,newevents,inputfldnames,eventtype)
 % leading to a crash of this function
 if isempty(EEG.urevent)
     fprintf('\nWarning: EEG.urevent is empty. Recreating urevents with eeg_checkset before adding new events...\n')
-    EEG = eeg_checkset(EEG,'makeur')
+    EEG = eeg_checkset(EEG,'makeur');
 end
 
 n_existingevents   = length(EEG.event);
@@ -160,6 +159,11 @@ dummy = rmfield(dummy,setxor(fieldnames(EEG.urevent),existingfldnames));
 newurevent  = [EEG.urevent, dummy];
 EEG.urevent = newurevent;
 
+
+
+
+
+
 %% calculate ur-latencies of new events
 
 %% scenario A: data is still continuous
@@ -226,14 +230,14 @@ end
 function res = mycellfun(com, vals, classtype)
 res = zeros(1, length(vals));
 switch com
-    case 'isempty',
-        for index = 1:length(vals), res(index) = isempty(vals{index}); end;
+    case 'isempty'
+        for index = 1:length(vals), res(index) = isempty(vals{index}); end
     case 'isclass'
         if strcmp(classtype, 'double')
-            for index = 1:length(vals), res(index) = isnumeric(vals{index}); end;
+            for index = 1:length(vals), res(index) = isnumeric(vals{index}); end
         else
             error('unknown cellfun command')
-        end;
+        end
     otherwise
         error('unknown cellfun command')
 end

@@ -14,11 +14,8 @@
 %
 %  sec_afterevent  - time after the event onset to include (in seconds)
 %
-%  ow_proportion: length of the appendend overweighted samples expressed as a 
-%                 proportion of the original length of the dateset 
-%                (e.g. 0.5 means that if the orig. dataset was 1000 samples long,
-%                we will append 500 samples of overweighted data, creating a final
-%                dataset that is 1500 samples long)
+%  ow_proportion: proportion of the appendend overweighted samples relative
+%                 to the current length of the dateset (e.g. 0.5)
 % 
 %  removemean - [boolean], for the appended epochs, remove mean value from each channel
 %               across the whole epoch? (recommended)
@@ -38,14 +35,21 @@
 % These appended samples comprise the time interval from -20 ms to +10 ms
 % relative to all 'saccade' events found in EEG.event. Samples around 
 % saccades will be repeatedly re-appended to the end of the dataset until the
-% appended dat corresponds to 50% (factor 0.5) of the original length of the dataset.
-% The mean % channel voltage will be removed from each appended short epoch (recommended!).
+% dataset is 0.5 times [ow_proportion] longer than before . That is, length of
+% the newly created dataset will be 150% of its original length. The mean
+% channel voltage will be removed from each appended short epoch.
+%
+% Note 1: Removing the epoch mean from the appended epochs is usually the best
+% choice for ICA
+%
+% Note 2: Following recommendations in Dimigen (2018), the data should also 
+% be optimally (high pass-) filtered for ICA *before* running this function
 %
 % -------------------------------------------------------------------------
-% The overweighting procedure was described and evaluated in:
+%% The overweighting procedure was proposed and empirically evaluated in:
 %
-% Dimigen, O. (2020). Optimizing ICA-based ocular artifact correction 
-% of EEG data recorded during free viewing. NeuroImage, 207, 116117
+% Dimigen, O. (2018). Optimizing ICA-based ocular artifact correction 
+% of EEG data recorded during free viewing. BioArXiv
 %
 % Please cite this reference paper if you use the method.
 % -------------------------------------------------------------------------
@@ -93,16 +97,10 @@ nsacpoints = round(ow_proportion * npoints); % desired number of (redundant) sac
 %% create event-locked epochs to overweight
 sac = pop_epoch(EEG,{event2overweight},timelim);
 
-% subtract baseline across whole epoch? (recommended for correction of saccadic spike potentials)
-if removemean 
-    	try
-    		sac = pop_rmbase(sac,[],[]); % newer EEGLAB versions: 3 mandatory inputs to pop_rmbase
-	catch ME
-		sac = pop_rmbase(sac,[]); % older EEGLAB versions
-	end
+if removemean
+    sac = pop_rmbase(sac,[],[]); % baseline subtracted across whole epoch
 end
-
-%sac = applytochannels(sac,1:NCHANS_EEG,'pop_rmbase( EEG,[],[]);');
+%sac = applytochannels(sac,1:NCHANS_EEG,'pop_rmbase( EEG,[]);');
 
 %% overweight (=copy & re-append) overweight-event-locked epochs
 tmpsacdata = sac.data(:,:); % 2D

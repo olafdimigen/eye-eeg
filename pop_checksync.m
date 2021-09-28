@@ -59,9 +59,8 @@
 % Please cite this paper when using this method. Thanks!
 %
 % Author: od
-% Copyright (C) 2009-2020 Olaf Dimigen, HU Berlin
-% olaf.dimigen@hu-berlin.de
-
+% Copyright (C) 2009-2021 Olaf Dimigen, HU Berlin
+% olaf@dimigen.de
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
 % the Free Software Foundation; either version 3 of the License, or

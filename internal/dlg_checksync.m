@@ -5,8 +5,7 @@
 %                 for help, type >> help pop_checksync
 %
 % Copyright (C) 2009-2016 Olaf Dimigen & Ulrich Reinacher, HU Berlin
-% olaf.dimigen@hu-berlin.de
-
+% olaf@dimigen.de
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
 % the Free Software Foundation; either version 3 of the License, or

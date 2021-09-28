@@ -33,8 +33,9 @@
 % Engbert et al. (2003, 2006). It intends to solve the problem that
 % single eye movements may be detected as multiple saccades by microsacc,
 % binsacc, and saccpar. For example, overshoots towards the end of saccades
-% ("glissades") are frequently detected as a separate saccade events, even
-% though they are probably better regarded as part of the same movement. 
+% (post-saccadic oscillations or "glissades") are frequently detected as a 
+% separate saccade events, even though they may (or may not) be better 
+% regarded as part of the same movement. 
 % One consequence of this can be extremely short fixation durations 
 % (e.g. < 50 ms).
 %
@@ -44,7 +45,7 @@
 % smoothdata, vecvel, velthresh, microsacc_plugin, binsacc, saccpar
 %
 % Author: od
-% Copyright (C) 2009-2020 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% Copyright (C) 2009-2018 Olaf Dimigen & Ulrich Reinacher, HU Berlin
 % olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify

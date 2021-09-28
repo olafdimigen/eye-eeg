@@ -41,9 +41,8 @@
 % (and if the epoch does not start with a saccade, which is less likely).
 %
 % Author: od
-% Copyright (C) 2009-2020 Olaf Dimigen, HU Berlin
-% olaf.dimigen@hu-berlin.de
-
+% Copyright (C) 2009-2018 Olaf Dimigen, HU Berlin
+% olaf@dimigen.de
 % Plans for future versions
 % -- Allow to enter multiple event types that will be plotted on top of
 %    each other

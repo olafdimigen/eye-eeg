@@ -60,9 +60,8 @@
 % Please cite this paper when using this method. Thanks!
 %
 % Author: od
-% Copyright (C) 2009-2020 Olaf Dimigen, HU Berlin
-% olaf.dimigen@hu-berlin.de
-
+% Copyright (C) 2009-2021 Olaf Dimigen, HU Berlin
+% olaf@dimigen.de
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
 % the Free Software Foundation; either version 3 of the License, or
@@ -81,6 +80,10 @@
 function [EEG] = checksync(EEG, chan_gaze_x, chan_heog_l, chan_heog_r, plotfig)
 
 fprintf('\n%s(): Computing cross correlation function between eye tracker and EOG channels...',mfilename);
+fprintf('\n\nNote: you need clean eye-tracking and EOG data for this function to produce sensible results.');
+fprintf('\nFor example, it is usually necessary to first reject intervals with bad or missing ET data (e.g. blinks)');
+fprintf('\nbefore computing the cross-correlation function with the EOG. Otherwise the results will be distorted.');
+fprintf(sprintf('\nYou can do this by clicking: \"Reject data based on eye tracker\" > \"Reject bad contin. data\"'));
 
 MAXLAG = 100; % compute cross-corr. up to max. lag of MAXLAG samples
 
@@ -89,52 +92,39 @@ if size(EEG.data,3)>1
     warning(sprintf('This function was designed to run on continuous (not epoched) data.\nIt may produce unreliable results if the time series are too short!'))
 end
 
-%% get "bad_ET" intervals from EEG.event structure
+%% get possible "bad_ET" intervals from EEG.event structure
 badvector = zeros(1,size(EEG.data,2)*size(EEG.data,3));
 ix_badETevent = find(ismember({EEG.event.type},'bad_ET'));
 if ~isempty(ix_badETevent)
-    
-    fprintf('\n\n-- Found \"bad_ET\" events in EEG.event.')
-    fprintf('\n-- These intervals will be taken out of the time series when computing the cross-correlation.')
-    
+    fprintf('\nFound \"bad_ET\" events in EEG.events...')
+    fprintf('\nThese bad eye-tracker intervals will be ignored when computing the cross-correlation.')
     bad_lat     = [EEG.event(ix_badETevent).latency];
     bad_dur     = [EEG.event(ix_badETevent).duration];
     bad_ET      = [bad_lat; bad_dur]';
     bad_ET(:,3) = bad_ET(:,1)+bad_ET(:,2)-1;
-    
     % create long vector (as long as EEG) indicating bad samples
     for j = 1:size(bad_ET,1)
         badvector(bad_ET(j,1):bad_ET(j,3)) = 1;
     end
-else
-    fprintf('\n\nNote: it is usually necessary to first reject or flag intervals with bad or missing ET data (e.g. blinks)');
-    fprintf('\nbefore computing the cross-correlation function with the EOG. Otherwise the results will be distorted.');
-    fprintf(sprintf('\nYou can do this by clicking: \"Reject data based on eye tracker\" > \"Reject or flag bad contin. data\"'));
 end
-    
 % reshape "badvector" to 3D if data is already epoched
 badvector = reshape(badvector,1,size(EEG.data,2),size(EEG.data,3));
 
 
-
 %% get data for cross-correlation
-gaze_x = mean(EEG.data(chan_gaze_x,:),1); % "mean", because user can also input several channels
+gaze_x = mean(EEG.data(chan_gaze_x,~badvector),1); % "mean", because user can also input several channels
 
 if chan_heog_l == chan_heog_r
     fprintf('\n\n%s(): Same channel number was provided for the left and right HEOG electrode!',mfilename);
     fprintf('\nTherefore, it is assumed that either (1) the HEOG was already recorded in a bipolar montage as one channel (e.g., L vs. R)');
     fprintf('\nor (2) that only one EOG electrode was placed near the eyes (e.g. only at left but not at right canthus).');
     fprintf('\nCross-correlation function will therefore be based on this one EOG channel.');
-    heog = EEG.data(chan_heog_l,:);
+    heog = EEG.data(chan_heog_l,~badvector);
 else
     fprintf('\n%s(): Computing one bipolar EOG channel from both EOG electrodes...',mfilename);
     % subtract right minus left EOG channels to obtain *positive* correlations with hor. ET
-    heog   = EEG.data(chan_heog_r,:)-EEG.data(chan_heog_l,:);
+    heog   = EEG.data(chan_heog_r,~badvector)-EEG.data(chan_heog_l,~badvector);
 end
-
-%% ignore "bad_ET" intervals determined above
-gaze_x = gaze_x(~badvector);
-heog   = heog(~badvector);
 
 %% compute cross correlation
 % based on entire recording (may include artifacts & loss of tracking!)
@@ -159,15 +149,13 @@ sampleDiff = lags(ix);  % find lag with maximum xc
 
 %% user feedback
 if sampleDiff < 0
-    fprintf('\n\n-- Maximum absolute cross-correlation observed at lag of %i samples (= %.2f ms):',sampleDiff,sampleDiff*(1000/EEG.srate));
+    fprintf('\n\n-- Maximum cross-correlation is observed at lag of %i samples (= %.2f ms):',sampleDiff,sampleDiff*(1000/EEG.srate));
     fprintf('\n-- The eye tracker signal leads the EOG signal');
-    fprintf('\n-- Please check out the cross-corr. plot for more details');
 elseif sampleDiff > 0
-    fprintf('\n\n-- Maximum absolute cross-correlation observed at lag of %i samples (= %.2f ms):',sampleDiff,sampleDiff*(1000/EEG.srate));
+    fprintf('\n\n-- Maximum cross-correlation is observed at lag of %i samples (= %.2f ms):',sampleDiff,sampleDiff*(1000/EEG.srate));
     fprintf('\n-- The eye tracker signal lags behind the EOG signal');
-    fprintf('\n-- Please check out the cross-corr. plot for more details');
 else
-    fprintf('\n\n-- Maximum absolute cross-correlation observed at lag of %i samples (= %.2f ms):',sampleDiff,sampleDiff*(1000/EEG.srate));
+    fprintf('\n\n-- Maximum cross-correlation is observed at lag of %i samples (= %.2f ms):',sampleDiff,sampleDiff*(1000/EEG.srate));
     fprintf('\n-- Gaze and EOG seem perfectly aligned');
 end
 

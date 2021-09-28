@@ -38,9 +38,8 @@
 % epoched data (and if the epoch does not start with a saccade)
 %
 % Author: od
-% Copyright (C) 2009-2020 Olaf Dimigen, HU Berlin
-% olaf.dimigen@hu-berlin.de
-
+% Copyright (C) 2009-2021 Olaf Dimigen, HU Berlin
+% olaf@dimigen.de
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
 % the Free Software Foundation; either version 3 of the License, or
@@ -55,7 +54,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, 51 Franklin Street, Boston, MA 02110-1301, USA
 
-function com = pop_ploteventrate(EEG,rate_event)
+function com = pop_ploteventrate(EEG,rate_event) % ### TODO: times rate
 
 com = '';
 
@@ -64,21 +63,21 @@ if nargin < 1
     return;
 end
 
-try
-    if nargin < 2
-        % pop dialogue
-        rate_event = dlg_ploteventrate(mfilename,EEG);
-    end
-    
-    ploteventrate(EEG,rate_event);
-    
-catch err
-    if (strcmp(err.identifier,'MATLAB:unassignedOutputs'))
-        return
-    else
-        rethrow(err);
-    end
+% try
+if nargin < 2
+    % pop dialogue
+    rate_event = dlg_ploteventrate(mfilename,EEG);
 end
+
+ploteventrate(EEG,rate_event);
+
+% catch err
+%     if (strcmp(err.identifier,'MATLAB:unassignedOutputs'))
+%         return
+%     else
+%         rethrow(err);
+%     end
+% end
 
 
 %% Show pop_resample() EEG.event.duration warning if EEGLAB version < X

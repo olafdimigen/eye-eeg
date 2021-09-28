@@ -1,5 +1,5 @@
-%  eegplugin_eye_eeg() - Preprocess, synchronize, artifact-correct, 
-%            and analyze simultaneously recorded eye tracking and EEG data
+%  eegplugin_eye_eeg() - Preprocess, synchronize, and analyze simultaneously
+%    recorded eye tracking and EEG data
 %
 %  Description:
 %   EYE-EEG is an extension for EEGLAB written to facilitate joint analyses
@@ -9,13 +9,13 @@
 %   microsaccades, eye tracker-supported ICA component selection, basic
 %   oculomotor research, or computing fixation-related potentials (FRPs).
 %
-%   EYE-EEG was developed by Olaf Dimigen and Ulrich Reinacher, 2009-2021
+%   EYE-EEG was developed by Olaf Dimigen and Ulrich Reinacher at 
+%   Humboldt-University at Berlin, Germany, 2009-2021
 %
 %   >> web: http://www2.hu-berlin.de/eyetracking-eeg
 %
-%   Copyright (C): Olaf Dimigen with major contributions by Ulrich Reinacher
-%   (until 2012)
-%   Any user feedback is highly welcome! Email: olaf@dimigen.de%
+%   Copyright (C): Olaf Dimigen with Ulrich Reinacher, 2009-2021
+%   User feedback welcome: email: olaf@dimigen.de%
 %   If you use functions of this toolbox, please cite this reference:
 %   ------------------------------------------------------------------
 %   Dimigen, O., Sommer, W., Hohlfeld, A., Jacobs, A., & Kliegl, R. (2011).
@@ -142,7 +142,7 @@
 
 function vers = eegplugin_eye_eeg(fig,try_strings,catch_strings)
 
-vers = 'eye_eeg_v0.99';
+vers = 'eye_eeg_v0.98';
 
 % add subfolder for dialogues and other helpers
 addpath(fullfile(fileparts(which(mfilename)),'internal'));

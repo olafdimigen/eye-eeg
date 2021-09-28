@@ -1,7 +1,38 @@
 %% EYE-EEG change log
-% olaf.dimigen@hu-berlin.de
+% olaf@dimigen.de
 
-% Change log (only major changes or bugfixes) for version 0.85
+% Change log for version 0.99
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%% 2021-09-28: checksync(): bad_ET intevals are now ignored
+% checksync()
+% Intervals with a bad eye-track (inserted as bad_ET markers in EEG.event)
+% are now ignored when computing the cross-correlation between eye-track
+% and electro-oculogram (to check the synchronization)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%% 2021-09-18: New function (Beta) to estimate saccade onsets without 
+% eye-tracking
+pop_detecteogspikes, detecteogspikes
+% New function to estimate saccade onsets based on a "radial" montage of
+% the EOG channels. The radial EOG reflects emphasizes the saccadic spike 
+% potential, which reflects recruitment of the eye muscles at saccade onset. 
+% These events can therefore be used to estimate saccade onsets (but not 
+% fixation onsets) without concurrent eye-tracking.
+% For references and more details, see Keren et al., 2010, NeuroImage and 
+% Dimigen, 2020, NeuroImage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%% 2021-09-17: Bugfix: Synchronize Eyelink data recorded with 2000 Hz
+synchronize.m
+% Eyelink trackers recording with 2000 Hz assign the same integer time stamp
+% to two subsequent sampling points in the raw data, causing problems in
+% the synchronization, which requires continuously increasing time stamps
+% in the ET data. Built-in simple function by Richard Schweitzer  (thanks!)
+% which increments the second of the two time stamps by 0.5 ms. (Hotfix)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%% 2021-09-17: Various smaller bug fixes and improvements of screen feedback
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 %% 2018-06-22

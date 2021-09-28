@@ -35,7 +35,7 @@
 %   pop_parsesmi,  pop_importeyetracker
 %
 % Author: ur
-% Copyright (C) 2009-2020 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% Copyright (C) 2009-2021 Olaf Dimigen & Ulrich Reinacher, HU Berlin
 % olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify
@@ -85,7 +85,7 @@ triggerColIndex = find(strcmp('Trigger',et.colheader));
 fprintf('\n\tDone.')
 
 %% get data
-fprintf('\n-- getting data...')
+fprintf('\n-- getting data (this may take a moment...')
 dataLines = regexp(B,'(^\d*\tSMP[^\r\n]*)','match','lineanchors')';
 % remove 'Type' information => keep only numerical data
 dataLines = strrep(dataLines,sprintf('SMP\t'),'');

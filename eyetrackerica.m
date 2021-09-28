@@ -101,9 +101,8 @@
 % Neuroscience, doi: 10.3389/fnhum.2012.00278.
 %
 % Author: od
-% Copyright (C) 2009-2020 Olaf Dimigen & Ulrich Reinacher, HU Berlin
-% olaf.dimigen@hu-berlin.de
-
+% Copyright (C) 2009-2021 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% olaf@dimigen.de
 % This program is free software; you can redistribute it and/or modify
 % it under the terms of the GNU General Public License as published by
 % the Free Software Foundation; either version 3 of the License, or
@@ -179,7 +178,13 @@ switch flagmode
         
     case 2
         % add flags if there are "bad" components that are not yet flagged
-        EEG.reject.gcompreject = new_badcomps | old_badcomps;
+        % bugfix 2019-12-30: catch problem if EEG.reject.gcompreject is row vector instead of
+        % column vector, as created, e.g. by ICLabel extension
+        if (isrow(new_badcomps) && isrow(old_badcomps)) || (iscolumn(new_badcomps) && iscolumn(old_badcomps))
+            EEG.reject.gcompreject = new_badcomps | old_badcomps;
+        else
+            EEG.reject.gcompreject = new_badcomps | old_badcomps';
+        end
         fprintf('\n%s(): %i previously \"good\" components were flagged for rejection.',mfilename,sum(new_badcomps)-sum(old_badcomps));
         fprintf('\n%s(): Now a total of %i components is flagged for rejection.',mfilename,sum(EEG.reject.gcompreject));
         

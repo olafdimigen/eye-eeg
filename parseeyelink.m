@@ -6,7 +6,7 @@
 %
 % Inputs:
 %   inputFile      - text (ascii) file, converted from raw ET recording
-%   outputMatFile    - MATLAB (.mat) file to save "et" structure in
+%   outputMatFile  - MATLAB (.mat) file to save "et" structure in
 %
 % Optional Inputs:
 %   triggerKeyword - keyword contained in special messages used for
@@ -33,8 +33,8 @@
 % See also:
 %   pop_parsesmi, pop_importeyetracker
 %
-% author: ur
-% Copyright (C) 2009-2020 Olaf Dimigen & Ulrich Reinacher, HU Berlin
+% author: od
+% Copyright (C) 2009-2021 Olaf Dimigen & Ulrich Reinacher, HU Berlin
 % olaf.dimigen@hu-berlin.de 
 
 % This program is free software; you can redistribute it and/or modify
@@ -56,7 +56,7 @@ function et = parseeyelink(inputFile,outputMatFile,triggerKeyword)
 if nargin < 2
     help(mfilename);
     return;
-end;
+end
 
 %% feedback
 fprintf('\n%s(): Parsing Eyelink raw data. This may take a moment...',mfilename)
@@ -133,7 +133,7 @@ clear edfCol* header
 fprintf('\n\tDone.')
 
 %% get data
-fprintf('\n-- getting data...')
+fprintf('\n-- getting data (this may take a moment)...')
 dataLines =  regexp(B,'^\d[^\r\n]*','match','lineanchors'); % bug 2015-06-27a
 
 % bug 2015-06-27a
@@ -164,7 +164,16 @@ dataChar(nColDatAll~=nColData,:)=[];
 
 % sscans string array by !column! for float-numbers, arranges in rows of
 % nColumns, till end of string (inf). transpose back to column order.
-et.data = sscanf(dataChar','%f',[nColData,inf])';
+mydata = sscanf(dataChar','%f',[nColData,inf])';
+
+
+%% Hotfix for Eyelink trackers with sampling rates > 1000 Hz, Sept. 2021
+% Bugreport by Richard Schweitzer
+% These trackers can produced outputs in which successive samples have the
+% same timestamp, causing problems later, we therefore add 0.5 ms to 
+% repeated time stamps
+[mydata, same_ts_found] = handle_identical_timestamps(mydata, true);
+et.data = mydata;
 
 clear dataLines dataChar
 fprintf('\n\tDone.')
@@ -336,3 +345,46 @@ save(outputMatFile,'-struct','et')
 fprintf('\n\tDone.')
 
 fprintf('\n\nFinished parsing eye track.\nSaved .mat file to %s.\n',outputMatFile)
+
+
+
+% Eyelink systems with high sampling rates (>1000 Hz?) sometimes produce
+% timestamps that are identical for subsequent sampling points in the raw
+% data, because fractions of milliseconds are not represented. This
+% function adds the intersample interval (e.g. 0.5 ms at 2000 Hz) to the
+% repeated time stamp. This is a hotfix and a more general solution might be
+% necessary once eye-trackers with even higher sampling rates come out :-)
+%
+% Bug report and initial code for this function was contributed by 
+% Richard Schweitzer. Adapted by olaf@dimigen.de, September 2021
+function [data, same_ts_found] = handle_identical_timestamps(data, print_messages)
+
+same_ts_found = 0; % flag: any identical timestamps in the data?
+ts = data(:,1); % timestamps
+
+% do we have any timestamps that are identical?
+if any(diff(ts)==0)
+    
+    % what's the corresponding inter-sample interval (in ms)?
+    isi = 0.5; %1000 / sampling_rate;
+    
+    % what's the time between timestamps?
+    delta = [1; diff(ts)];
+    assert(length(delta)==size(data,1));
+    
+    % produce new time vector without identical time stamps
+    ts_new = ts;
+    ts_new(delta==0) = ts_new(delta==0) + isi; % add half a millisec
+    
+    % write new timestamps to data
+    data(:,1) = ts_new;
+    
+    % update flag
+    same_ts_found = 1;
+
+    if print_messages
+        fprintf('\n-- Note: Found subsequent Eyelink samples with same timestamp',mfilename);
+        fprintf('\n\tThis can happen at sampling rates above 1000 Hz');
+        fprintf('\n\tTo avoid identical time stamps, I added %.1f ms to each repeated timestamp',isi);
+    end
+end
