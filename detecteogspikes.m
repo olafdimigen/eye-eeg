@@ -343,7 +343,7 @@ fprintf('\nNumber of detected rEOG spikes:   %i\n',size(allpeaks,1));
 if writesac && ~isempty(allpeaks)
     colnames      = {'latency','reog_spikeamplitude','epoch'};
     newevents     = [allpeaks(:,1) allpeaks(:,2) allpeaks(:,3)];
-    eventname     = '';
+    eventname     = 'reog_spike';
     % add events
     EEG = addevents(EEG,newevents,colnames,eventname);
     
