@@ -244,7 +244,7 @@ end
 
 %% update the sample index of events in the ET
 % for existing ET events, search for closest timestamp in the new time
-new_ix = zeros(length(ET.event),1);
+new_ix = zeros(size(ET.event,1),1);
 % for k = ix_startevent:ix_endevent
 %     new_ix(k) = searchclosest(ET.newtime,ET.event(k,1));
 % end
