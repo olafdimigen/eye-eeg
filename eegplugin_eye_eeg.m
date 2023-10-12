@@ -9,13 +9,12 @@
 %   microsaccades, eye tracker-supported ICA component selection, basic
 %   oculomotor research, or computing fixation-related potentials (FRPs).
 %
-%   EYE-EEG was developed by Olaf Dimigen and Ulrich Reinacher, 2009-2021
+%   EYE-EEG was developed by Olaf Dimigen and Ulrich Reinacher, 2009-2023
 %
-%   >> web: http://www2.hu-berlin.de/eyetracking-eeg
+%   >> web: http://www.eyetracking-eeg.org
 %
-%   Copyright (C): Olaf Dimigen with major contributions by Ulrich Reinacher
-%   (until 2012)
-%   Any user feedback is highly welcome! Email: olaf@dimigen.de%
+%   Copyright (C): Olaf Dimigen with major contributions by Ulrich Reinacher (until 2012)
+%   Any user feedback is highly welcome! Email: science@dimigen.de
 %   If you use functions of this toolbox, please cite this reference:
 %   ------------------------------------------------------------------
 %   Dimigen, O., Sommer, W., Hohlfeld, A., Jacobs, A., & Kliegl, R. (2011).
@@ -35,9 +34,14 @@
 %   eye movement artifacts in electroencephalographic data. Frontiers in
 %   Human Neuroscience, doi: 10.3389/fnhum.2012.00278
 %
+%
 %   Please clarify that you have used the implementation of these methods
 %   in EYE-EEG, as they may differ from the original versions in some
 %   regards
+%
+%   If you combined EYE-EEG with deconvolution modeling in "UNFOLD" please
+%   cite the unfold toolbox paper (Ehinger & Dimigen, 2019, PeerJ) as well
+%   as the specialized paper by Dimigen & Ehinger, 2021, Journal of Vision
 %
 %   Installation:
 %   Simply copy the folder called "eye_eegX.XX" containing the toolbox's m-files
@@ -142,7 +146,7 @@
 
 function vers = eegplugin_eye_eeg(fig,try_strings,catch_strings)
 
-vers = 'eye_eeg_v0.99';
+vers = 'eye_eeg_v1.00';
 
 % add subfolder for dialogues and other helpers
 addpath(fullfile(fileparts(which(mfilename)),'internal'));

@@ -1,0 +1,12 @@
+%% EYE-EEG change log
+% science@dimigen.de
+
+% After more than 12 years of EYE-EEG, it is maybe time for a version 1.0!
+% Change log for version 1.00
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+%% 1. small optimizations
+%% 2. Includes a major bugfix for an issue the saccade detection that could
+%% affect the properties of the last saccade detected in any epoch
+%% Details here: https://github.com/olafdimigen/eye-eeg/issues/24
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
