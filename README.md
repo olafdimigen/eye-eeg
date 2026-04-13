@@ -1,6 +1,8 @@
 # EYE-EEG Toolbox
 
-Version 1.0 of the EYE-EEG extension for EEGLAB
+Version 1.01 of the EYE-EEG extension for EEGLAB
+
+Contains a major bugfix to ensure compatibility with EEGLAB versions >= EEGLAB2025.1.0
 
 ## What is the EYE-EEG toolbox?
 

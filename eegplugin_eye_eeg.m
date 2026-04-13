@@ -9,7 +9,7 @@
 %   microsaccades, eye tracker-supported ICA component selection, basic
 %   oculomotor research, or computing fixation-related potentials (FRPs).
 %
-%   EYE-EEG was developed by Olaf Dimigen and Ulrich Reinacher, 2009-2023
+%   EYE-EEG was developed by Olaf Dimigen and Ulrich Reinacher, 2009-2026
 %
 %   >> web: http://www.eyetracking-eeg.org
 %
@@ -146,7 +146,7 @@
 
 function vers = eegplugin_eye_eeg(fig,try_strings,catch_strings)
 
-vers = 'eye_eeg_v1.00';
+vers = 'eye_eeg_v1.01';
 
 % add subfolder for dialogues and other helpers
 addpath(fullfile(fileparts(which(mfilename)),'internal'));

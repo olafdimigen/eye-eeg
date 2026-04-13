@@ -103,6 +103,27 @@ storeOldEvent(1:length(existingfldnames),:) = struct2cell(EEG.event);
 %% since new event properties are always numerical
 storeOldEvent(length(existingfldnames)+1:end,:) = {0};
 
+% #############################################################################
+% BUGFIX for EEGLAB versions >= 2025.1.0 (patch by OD, 2025)
+% ISSUE: https://github.com/olafdimigen/eye-eeg/issues/30
+%
+% Problem: on continuous data, 'epoch' field is absent from existing events,
+% so it lands in newfldonly and gets the default fill value of 0 (line above).
+% eeg_checkset('eventconsistency') in new EEGLAB versions now remove events
+% with epoch < 1, silently deleting all pre-existing stimulus events.
+% Fix: override the fill value for the 'epoch' row to 1 for continuous data.
+% This only applies when 'epoch' was absent from existing events (case where
+% it appears in newfldonly); if existing events already have an 'epoch' field
+% their values are preserved above via struct2cell and are not affected here.
+
+if isempty(EEG.epoch) % if data is still continuous...
+    epoch_row = find(strcmp(newfldonly, 'epoch')); % where is "epoch" field?
+    if ~isempty(epoch_row)
+        storeOldEvent(length(existingfldnames) + epoch_row, :) = {1}; % set to 1 (instead of keeping it zero)
+    end
+end
+% #############################################################################
+
 %% get type (numeric or string) of event fields in EEG.event
 existing_isnumeric = all(cellfun(@isnumeric,storeOldEvent(ib,:)),2)';
 
