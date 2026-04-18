@@ -73,10 +73,10 @@ fprintf('\n\tDone.')
 
 %% file specifications and comments
 fprintf('\n-- getting comment lines and column headers...')
-et.comments = regexp(B,'(##[^\r\n]*\r\n)','match');
+et.comments = regexp(B,'(##[^\r\n]*\r?\n)','match');
 
 %% build column header
-et.colheader = regexp(B,'Time[^\r\n]*\r\n','match');
+et.colheader = regexp(B,'Time[^\r\n]*\r?\n','match');
 
 % clear 'Type' from header, as this information is not kept
 et.colheader = strrep(et.colheader,sprintf('Type\t'),'');
@@ -120,7 +120,7 @@ end
 
 %% get messages
 fprintf('\n-- getting messages...')
-et.messages = regexp(B,'\d*\tMSG[^\r\n]*\r\n','match');
+et.messages = regexp(B,'\d*\tMSG[^\r\n]*\r?\n','match');
 fprintf('\n\tDone.')
 
 %% build table with synchronization events for eye tracker

@@ -186,7 +186,7 @@ else
     fprintf('\nVelocity threshold factor (vfac):  %.2f SD',vfac);
     fprintf('\nMinimum saccade duration (mindur): %.2f samples (%.2f ms)',mindur,mindur*1000/EEG.srate);
     if ~isempty(degperpixel) | isnan(degperpixel) % bugfix 2016-11-12 by OD: added case if degperpixel = NaN (from GUI input)
-        fprintf('\nVisual angle per screen pixel:     %f°',degperpixel);
+        fprintf('\nVisual angle per screen pixel:     %fï¿½',degperpixel);
         metric = 'deg';
     else
         fprintf('\nWARNING: No input provided for degperpixel!\nSpatial saccade properties are given in original metric (pixel?)');
@@ -635,8 +635,8 @@ end
 %% user feedback: saccade & fixation detection
 fprintf('\n--------------------------------------------------------------------');
 fprintf('\nVelocity thresholds used:'); if nepochs > 1, fprintf(' (mean across epochs):'); end
-if ldata, fprintf('\n\tLeft eye.  Horiz.: %.2f %s/s. Vert.: %.2f %s/s',mean(l_msdx(e)*vfac*degperpixel),metric,mean(l_msdy*vfac*degperpixel),metric); end
-if rdata, fprintf('\n\tRight eye. Horiz.: %.2f %s/s. Vert.: %.2f %s/s',mean(r_msdx(e)*vfac*degperpixel),metric,mean(r_msdy*vfac*degperpixel),metric); end
+if ldata, fprintf('\n\tLeft eye.  Horiz.: %.2f %s/s. Vert.: %.2f %s/s',mean(l_msdx*vfac*degperpixel),metric,mean(l_msdy*vfac*degperpixel),metric); end
+if rdata, fprintf('\n\tRight eye. Horiz.: %.2f %s/s. Vert.: %.2f %s/s',mean(r_msdx*vfac*degperpixel),metric,mean(r_msdy*vfac*degperpixel),metric); end
 fprintf('\n--------------------------------------------------------------------')
 if ~isempty(allsac)
     fprintf('\n%i saccades detected:',size(allsac,1));
