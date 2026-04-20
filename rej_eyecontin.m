@@ -20,6 +20,25 @@
 %                pop_detecteyemovements(), so that the bad ET data will not
 %                distort the detection of saccades and fixations
 %
+%
+%                Update November 2024: The function can now receive as
+%                input continuous or epoched data. If run on epoched data
+%                with rejectionmethod == 2, it will add events to the EEG
+%                structure with an additional column 'epoch'. This allows 
+%                to mask bad ET samples when using detecteyemovements.m on 
+%                epoched data, as epoching does not update event duration, 
+%                and thus 'bad_ET' derived from continous data creates 
+%                wrong bad_ET masks on epoched data.
+%                Note that the epoch added to EEG.event is the epoch an
+%                event started at; if an event lasts several epochs, this
+%                will not appear on the 'epoch' column, but will still
+%                work correctly in detecteyemovements.m. The new optional
+%                third output, seqs_bad, is a struct with information
+%                regrading bad ET sequences per epoch. 
+%                This implementation currently does not allow to use
+%                rejectionmethod == 1 with epoched data. 
+%                Rotem Krispil, rotem.krispil@mail.huji.ac.il. 
+%
 % Usage:
 %   >> EEG = rej_eyecontin(EEG,chns,minvals,maxvals,windowsize,rejectionmethod)
 %
@@ -79,7 +98,7 @@
 %
 % See also: pop_rej_eyecontin, pop_rej_eyeepoch, pop_select
 %
-% Author: od
+% Author: od, rk (2024 update)
 % Copyright (C) 2009-2021 Olaf Dimigen & Ulrich Reinacher, HU Berlin
 % olaf@dimigen.de
 % This program is free software; you can redistribute it and/or modify
@@ -96,7 +115,7 @@
 % along with this program; if not, write to the Free Software
 % Foundation, 51 Franklin Street, Boston, MA 02110-1301, USA
 
-function [EEG,seq_bad] = rej_eyecontin(EEG,chns,minvals,maxvals,windowsize,rejectionmethod)
+function [EEG,seq_bad_overall, seqs_bad] = rej_eyecontin(EEG,chns,minvals,maxvals,windowsize,rejectionmethod)
 
 
 %% input checks
@@ -123,23 +142,30 @@ end
 
 %% collect indices of out-of-range samples across all channels
 fprintf('\n%s(): Rejecting intervals with out-of-range eye track',mfilename)
-ix_bad = [];
-for c = 1:length(chns)
-    [chnid chntxt] = eeg_decodechan(EEG.chanlocs,chns(c)); % get channel names
-    
-    if checkminima && checkmaxima
-        fprintf('\nChannel %i \"%s\": rejecting values < %i or > %i',chnid,chntxt{:},minvals(c),maxvals(c));
-        ix = find(EEG.data(chns(c),:) < minvals(c) | EEG.data(chns(c),:) > maxvals(c));
-    elseif checkminima
-        fprintf('\nChannel %i \"%s\": rejecting values < %i',chnid,chntxt{:},minvals(c));
-        ix = find(EEG.data(chns(c),:) > maxvals(c));
-    else
-        fprintf('\nChannel %i \"%s\": rejecting values > %i',chnid,chntxt{:},maxvals(c));
-        ix = find(EEG.data(chns(c),:) < minvals(c) );
+ix_bad = {};
+nEpochs = size(EEG.data, 3);
+nSamples = size(EEG.data, 2);
+for e = 1:nEpochs
+    ix_bad_e = [];
+    for c = 1:length(chns)
+        [chnid chntxt] = eeg_decodechan(EEG.chanlocs,chns(c)); % get channel names
+
+        if checkminima && checkmaxima
+            fprintf('\nChannel %i \"%s\": rejecting values < %i or > %i',chnid,chntxt{:},minvals(c),maxvals(c));
+            ix = find(EEG.data(chns(c),:, e) < minvals(c) | EEG.data(chns(c),:, e) > maxvals(c));
+        elseif checkminima
+            fprintf('\nChannel %i \"%s\": rejecting values < %i',chnid,chntxt{:},minvals(c));
+            ix = find(EEG.data(chns(c),:, e) > maxvals(c));
+        else
+            fprintf('\nChannel %i \"%s\": rejecting values > %i',chnid,chntxt{:},maxvals(c));
+            ix = find(EEG.data(chns(c),:, e) < minvals(c) );
+        end
+        ix_bad_e = [ix_bad_e ix];
+        
     end
-    ix_bad = [ix_bad ix];
+    ix_bad{e} = unique(ix_bad_e);
 end
-ix_bad = unique(ix_bad);
+%ix_bad = unique(ix_bad);
 if windowsize > 0
     fprintf('\nRejecting an extra plusminus %i samples (%.0f ms) around each out-of-range interval.',windowsize,windowsize*1000/EEG.srate)
 end
@@ -148,45 +174,85 @@ end
 if isempty(ix_bad)
     fprintf('\n\nNo out-of-range samples found.\n')
 else
-    % identify start and end indices of contiguous blocks of bad data
-    seq_bad = findsequence2(ix_bad');
-    
-    % add extra rejection zone around bad data
-    % e.g., to remove sub-threshold bad samples at beginning/end of blinks
-    seq_bad(:,1) = seq_bad(:,1) - windowsize;
-    seq_bad(:,2) = seq_bad(:,2) + windowsize;
-    
-    % remove indices outside data boundaries
-    seq_bad(seq_bad(:,1) < 1,1) = 1;
-    seq_bad(seq_bad(:,2) > size(EEG.data,2),2) = size(EEG.data,2);
-    
+    seqs_bad = {};
+    for e = 1:nEpochs
+        % Check if epoch has bad data
+        if ~isempty(ix_bad{e})
+
+            % identify start and end indices of contiguous blocks of bad data
+            seq_bad = findsequence2(ix_bad{e}');
+
+            % add extra rejection zone around bad data
+            % e.g., to remove sub-threshold bad samples at beginning/end of blinks
+            seq_bad(:,1) = seq_bad(:,1) - windowsize;
+            seq_bad(:,2) = seq_bad(:,2) + windowsize;
+
+            % remove indices outside data boundaries
+            seq_bad(seq_bad(:,1) < 1,1) = 1;
+            seq_bad(seq_bad(:,2) > nSamples,2) = nSamples;
+            
+            seqs_bad{e} = seq_bad;
+        end
+        
+    end
     % to handle overlapping blocks of bad data
     % translate again into vector of bad samples (0 = good, 1 = bad)
-    badvector = zeros(size(EEG.data,2),1);
-    for n = 1:size(seq_bad,1);
-        badvector(seq_bad(n,1):seq_bad(n,2)) = 1;
+    badvectoroverall = zeros(nSamples * nEpochs,1);
+    for e = 1:nEpochs
+        if ~isempty(seqs_bad{e})
+            seq_bad = seqs_bad{e};
+            badvector = zeros(nSamples, 1);
+            for n = 1:size(seq_bad,1)
+                badvectoroverall((seq_bad(n,1) + nSamples*(e-1)) : (seq_bad(n,2) + nSamples*(e-1))) = 1;
+                badvector(seq_bad(n,1):seq_bad(n,2)) = 1;
+            end
+
+            % get start/end of bad blocks again
+            seqs_bad{e} = findsequence2(find(badvector));
+        end
     end
-    % get start/end of bad blocks again
-    seq_bad = findsequence2(find(badvector));
     
-    fprintf('\n\nFound %i out-of-range samples in %i continuous intervals of bad data',length(ix_bad),size(seq_bad,1));
+    % get start/end of bad blocks again
+    seq_bad_overall = findsequence2(find(badvectoroverall));
+    
+    if nEpochs > 1
+        % Add epoch column
+        epochs = floor(seq_bad_overall(:,1)/nSamples) + 1;
+        seq_bad_overall(:,4) = epochs;
+    else
+        % If single epoch, extract from struct. seq_bad_overall is a double
+        % already if single epoch - maintaining compatability with previous
+        % version. 
+        seqs_bad = seqs_bad{1};
+    end
+    
+    fprintf('\n\nFound %i out-of-range samples in %i continuous intervals of bad data',sum(badvectoroverall),size(seq_bad_overall,1));
     
     % reject bad data
     switch rejectionmethod
         
         case 1 % remove using pop_select
-            fprintf('\nRemoving bad intervals from continuous data...\n\n')
-            EEG = pop_select(EEG,'nopoint',seq_bad(:,1:2));
-            
+            if nEpochs == 1
+                fprintf('\nRemoving bad intervals from continuous data...\n\n')
+                EEG = pop_select(EEG,'nopoint',seq_bad_overall(:,1:2));
+            else
+                error('%s(): Attempting to remove bad intervals from epoched data', mfilename)
+            end
         case 2 % add "bad_ET" marker for each bad interval
 
             % Update march 2018 (OD)
             % Do not remove data, but introduce new bad_ET events in EEG.event
             fprintf('\nAdding %i bad_ET markers to the EEG.event structure...\nNot removing any data.\n\n',size(seq_bad,1))
-            % add duration of bad interval (in samples)
-            seq_bad(:,3) = seq_bad(:,2)-seq_bad(:,1) + 1;
+            % Are there already bad_ET events (e.g., from runnning the 
+            % function previously on continuous data)? If so, remove them.
+            old_badET_events = contains({EEG.event.type}, {'bad_ET'});
+            EEG = pop_editeventvals(EEG,'delete', find(old_badET_events));
             % add bad ET markers
-            EEG = addevents(EEG,[seq_bad(:,1) seq_bad(:,3)],{'latency','duration'},'bad_ET');
+            if nEpochs == 1  
+                EEG = addevents(EEG,[seq_bad_overall(:,1) seq_bad_overall(:,3)],{'latency','duration'},'bad_ET');
+            else
+                EEG = addevents(EEG,[seq_bad_overall(:,1) seq_bad_overall(:,3:4)],{'latency','duration', 'epoch'},'bad_ET');
+            end
             
         otherwise
             error('%s(): rejection method input not recognized',mfilename)
